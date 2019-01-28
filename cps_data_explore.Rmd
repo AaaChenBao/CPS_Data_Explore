@@ -1,0 +1,256 @@
+---
+output:
+  html_document:
+    code_folding: hide
+    includes: 
+      in_header: "favicon.html"
+---
+# Chicago Public Schools Data Explore
+#### The following graphs present CPS, including enrollment, demographic, performance metrics, etc.  
+
+```{r, echo=FALSE, tidy=TRUE, warning=FALSE, results=FALSE}
+# laoding packages 
+library(tidyverse)
+library(reshape2)
+library(readxl)
+library(dplyr)
+library(plyr)
+library(scales)
+```
+
+```{r, echo=FALSE, tidy=TRUE, warning=FALSE, results=FALSE}
+# graph 1 
+# read in file 
+enroll_all <- read_csv("enroll_all.csv", col_names = TRUE)
+```
+
+## Overview of the CPS enrollment 
+
+##### Chicago Public Schools (CPS), currently contains 479 elementary schools, and 165 high schools in the school district. Given the number of students enrolled in school year 2018-2019, 76.6% of the population are economically disadvantages students, 18.7% are English language learners, and 14.1% are students with individualized education programs (basically students with disabilities).
+
+```{r, fig.width=10,fig.height=8}
+# draw graph
+enrollment <- ggplot(enroll_all, aes(x= Year, y = Headcount)) +
+  geom_point(aes(color=Student_Type)) +
+  geom_line(aes(color=Student_Type)) +
+  geom_text(data=subset(enroll_all,Year == 2010), aes(label = Headcount), size = 3, vjust = 2, hjust = 0.3) +  
+  geom_text(data=subset(enroll_all,Year == 2019), aes(label = Headcount), size = 3, vjust = -0.9, hjust = 0.5) +  
+  facet_wrap( ~ Student_Type, scales = "free_y", nrow = 4) +
+  scale_x_continuous(breaks=seq(2010, 2019, 1)) +
+  scale_y_continuous(label = unit_format(unit = "K", scale = 1e-3)) +
+  xlab("Year") + ylab("Enrollment Headcount") + 
+  labs(
+    title = "Chicago Public Schools Enrollment Drops by 50,000 Students in the Past 10 Years ", 
+    subtitle = "Enrollment drops for all types of students, from kindergarten to high school", 
+    caption = "CPS School Data Report 2010-2019: 20th Day Membership.") +
+  theme(
+    plot.title = element_text(size = 12, hjust = 0.5, face = "bold", family = "Helvetica"),
+    plot.subtitle = element_text(size = 11, hjust = 0.5, family = "Palatino"),
+    plot.caption = element_text(size = 8, hjust = 1, face="bold.italic"), 
+    axis.title.x = element_text(size=12, face="bold"), 
+    axis.title.y = element_text(size=12, face="bold"),
+    strip.text.x = element_text(size = 10, face="bold"),
+    panel.background = element_blank())
+  
+enrollment 
+```
+
+##### This graphs shows that, over the past 10 year, CPS has experienced drop in enrollment. Enrollments drop throughout all its schools, from kindergartens, elementary schools, to high schools. Noteworthy, the 2019 (20th day enrollment) total population has dropped almost 50,000 compared to 2010, from 409279 to 361314. Within each student type, the biggest drop comes from elementary school students which also serve as the majotiry group of the population. 
+
+```{r, echo=FALSE, tidy=TRUE, warning=FALSE, results=FALSE}
+# graph 2
+# read in file 
+race <- read_excel("Racial_Ethnic_Survey.xlsx", sheet = "Sheet1")
+race$Other <- race$`Asian/Pacific Islander` + race$`Native American` + race$`Multi-Racial` +
+  race$Asian + race$`Hawaiian/Pacific Islander` + race$`Not Available`
+var_list <- c("Year", "Other", "Hispanic", "African American", "White")
+race <- race[var_list]
+race <- melt(race, id.var="Year")
+colnames(race) <- c("Year", "Ethnicity", "Percentage")
+race$Percentage <- lapply(race$Percentage, round, 1)
+```
+
+
+```{r, fig.width=10,fig.height=6}
+# draw graph
+race_bar <- ggplot(race, aes(x= Year, y = Percentage, fill = Ethnicity, label = Percentage)) +
+  coord_flip() +
+  geom_bar(stat = "identity", alpha = 0.9) +
+  geom_text(data=race, size = 3, position = position_stack(vjust = 0.5)) +
+  scale_fill_manual(values=c("#6C5B7B", "#F8B195", "#F67280", "#C06C84")) + 
+  scale_x_continuous(breaks=seq(2010, 2019, 1), expand = c(.01, 0)) +
+  labs(
+    title = "More than 80% Chicago Public Schools Students are \n African American and Hispanic Students", 
+    subtitle = "From 2010-2019, relatively more white students and students with other race enrolled in CPS", 
+    caption = "CPS School Data Report 2010-2019: Racial/Ethnic Report.") +
+  theme(
+    plot.title = element_text(size = 13, hjust = 0.5, face = "bold", family = "Helvetica"),
+    plot.subtitle = element_text(size = 11, hjust = 0.5, family = "Palatino"),
+    plot.caption = element_text(size = 8, hjust = 1, face="bold.italic"), 
+    axis.title.x = element_text(size=12, face="bold"), 
+    axis.title.y = element_text(size=12, face="bold"),
+    strip.text.x = element_text(size = 10, face="bold"),
+    axis.text.x = element_text(angle = 0, hjust = 1),
+    panel.background = element_blank())
+
+race_bar
+```
+
+##### This graphs shows the make up of race/ethnicity on CPS student bodys. As a public school district in a big metropolitan area, CPS contains more than 80% of African American and Hispanic students. White studentd, however, counts for less than 10% of the population for most of the years. In recent years, there is a slightly shift toward having more white students, and more students with other race/ethnicity, primarily Asian students. 
+
+
+```{r, echo=FALSE, tidy=TRUE, warning=FALSE, results=FALSE}
+# graph 3
+# read in file 
+demo_all <- read_csv("demo_all.csv", col_names = TRUE)
+```
+
+```{r, fig.width=10,fig.height=8}
+# draw graph
+lunch_bi <- ggplot(demo_all,  aes(x = FreeLunch_per, y = Bi_per)) +
+  geom_point(alpha = 1, aes(color=Network)) +
+  geom_smooth(method='lm',formula=y~x) +
+  geom_hline(data=subset(demo_all, year == 2019), 
+             aes(yintercept = mean(Bi_per), group = year), linetype="dashed", color = "#f25f5c", size=.5) +
+  geom_hline(data=subset(demo_all, year == 2018), 
+             aes(yintercept = mean(Bi_per), group = year), linetype="dashed", color = "#f25f5c", size=.5) +
+  geom_hline(data=subset(demo_all, year == 2017), 
+             aes(yintercept = mean(Bi_per), group = year), linetype="dashed", color = "#f25f5c", size=.5) +
+  geom_vline(data=subset(demo_all, year == 2019), 
+             aes(xintercept = mean(FreeLunch_per), group = year), linetype="dashed", color = "#5ed7bf", size=.5) +
+  geom_vline(data=subset(demo_all, year == 2018), 
+             aes(xintercept = mean(FreeLunch_per), group = year), linetype="dashed", color = "#5ed7bf", size=.5) +
+  geom_vline(data=subset(demo_all, year == 2017), 
+             aes(xintercept = mean(FreeLunch_per), group = year), linetype="dashed", color = "#5ed7bf", size=.5) +
+  facet_wrap( ~ year, nrow =1) +
+  xlab("% Free/Reduced Lunch") + ylab("% Bilingual") +
+  xlim(50, 95) + ylim(5, 50) +
+  labs(
+    title = "Networks with More Bilingual Population are also Networks \n with more Economically Disadvantaged Population",
+    subtitle = "Distributions of 2017-2019, only for Networks' with more than 15% bilingual population", 
+    caption = "CPS School Data Report: Limited English Proficiency, Special Ed, Low Income, IEP.") +
+  theme(
+    aspect.ratio=1, 
+    plot.title = element_text(size = 13, hjust = 0.5, face = "bold", family = "Helvetica"),
+    plot.subtitle = element_text(size = 11, hjust = 0.5, family = "Palatino"),
+    plot.caption = element_text(size = 8, hjust = 1, face="bold.italic"), 
+    axis.title.x = element_text(size=12, face="bold"), 
+    axis.title.y = element_text(size=12, face="bold"),
+    strip.text.x = element_text(size = 10, face="bold"),
+    panel.background = element_blank())
+
+lunch_bi
+```
+
+
+##### This graphs shows the relationship between % free lunch program enrollment and % bilingual popualtion among CPS Networks (breakdown mostly by location). Blue lines indicate the fitted condition, and red dotted lines indicate the mean level for % bilingual popluation among different years, and green dotted lines indicate the mean levle for % reduced/free lunch population among different years. Here, we would like to use % reduced/free lunch as an indicator for low income students. Therefore, the grpahs presents that Networks with more bilingual population are also Networks with more economically disadvantaged population. Especially for Network 7 and Network 8, contains schools in Midway and Pilsen Litter Village. 
+
+```{r, echo=FALSE, tidy=TRUE, warning=FALSE, results=FALSE}
+# graph 4
+# read in files
+SQRP <- read_excel("Accountability_SQRPratings_2018-2019_SchoolLevel.xls", sheet = "High Schools (grds 9-12 only)", 
+                   skip = 1)
+SQRP <- SQRP[ , which(names(SQRP) %in% c("School ID", "School Name", "SQRP Total Points Earned", 
+                                         "4-Year Cohort Graduation Rate",  "Average Daily Attendance Rate", "College Enrollment Rate"))]
+SQRP <- SQRP[complete.cases(SQRP), ]  
+names(SQRP) <- c("ID", "Name", "SQRP_Score", "Graduation", "College_enroll",  "Attendance")
+
+SQRP$Graduation <- as.numeric(as.character(SQRP$Graduation))
+SQRP$Attendance <- as.numeric(as.character(SQRP$Attendance)) 
+SQRP$College_enroll <- as.numeric(as.character(SQRP$College_enroll)) 
+
+SQRP <- SQRP[SQRP$Graduation!=0 & SQRP$Attendance!=0 & SQRP$College_enroll!=0, ]
+```
+
+```{r, fig.width=10,fig.height=8}
+# draw graph
+sqrp_grad_attend <- ggplot(SQRP, aes(x = Graduation, y = Attendance, size = College_enroll, fill = SQRP_Score)) +
+  geom_point(shape = 21) + 
+  xlab("% 4-Year Cohort Graduation Rate") + ylab("% Average Daily Attendance Rate") +
+  labs(size = "% College Enrollment Rate", fill = "School Quality Rating") +
+  scale_x_continuous(limits=c(20, 100), breaks=c(20, 30, 40, 50, 60, 70, 80, 90, 100)) +
+  scale_y_continuous(limits=c(70, 100), breaks=c(70, 75, 80, 85, 90, 95, 100)) +
+  scale_size(range = c(0,6),
+             breaks = c(30, 40, 50, 60, 70, 80, 90, 100),
+             labels = c(30, 40, 50, 60, 70, 80, 90, 100)) +
+  labs(
+    title = "High School SQRP Ratings are Heavily Determined by \n Graduation, Attendance, and College Enrollment", 
+    subtitle = "CPS FY1819 High School SQRP Ratings vs. Graduation, Attendance, and College Enrollment", 
+    caption = "CPS School Data Report: School Quality Rating Policy Results and Accountability Status
+       *Outlier removed for High School with missing values and extreme values") +
+  theme(
+    plot.title = element_text(size = 13, hjust = 0.5, face = "bold", family = "Helvetica"),
+    plot.subtitle = element_text(size = 11, hjust = 0.5, family = "Palatino"),
+    plot.caption = element_text(size = 8, hjust = 1, face="bold.italic"), 
+    axis.title.x = element_text(size=12, face="bold"), 
+    axis.title.y = element_text(size=12, face="bold"),
+    strip.text.x = element_text(size = 10, face="bold"),
+    panel.background = element_blank()) + 
+  theme(legend.position = "bottom", legend.direction = "horizontal") 
+   
+sqrp_grad_attend
+```
+
+##### This graphs shows how CPS high school quality rating policy results (SQRP) are distributed. For each school, SQRP score lies with in any number between 0 - 4. As indicates from the graph, the lighter the color of the bubble, the high the SQRP score a school earns. On the meantime, this graph also shows the performance metrics for each school, including their high school graduation rate (observe through the x-axis), daily attendance rate (observe through the y-sxis), and college enrollment rate (observe through the size of the bubble, the bigger the bubble, the higher the college enrollment rate). Therefore, this grpah concludes that high school SQRP ratings are heavily determined by graduation, attendance, and college enrollment.
+
+```{r, echo=FALSE, tidy=TRUE, warning=FALSE, results=FALSE}
+# read in file 
+progress_2019 <- read_csv("Chicago_Public_Schools_-_School_Progress_Reports_SY1819.csv", col_names = TRUE)
+progress_2019 <- select(progress_2019, School_ID, Short_Name, starts_with('NWEA'))
+progress_2019 <- select(progress_2019, School_ID, Short_Name, ends_with('Pct'))
+progress_2019 <- select(progress_2019, School_ID, Short_Name, contains('Growth'))
+progress_2019 <- progress_2019[complete.cases(progress_2019), ]
+colnames(progress_2019) <- c("ID", "Name", "Reading_3", "Reading_4", "Reading_5", "Reading_6", "Reading_7", "Reading_8", 
+                             "Math_3", "Math_4", "Math_5", "Math_6", "Math_7", "Math_8")
+
+progress_2019 <- melt(progress_2019, id=c("ID","Name"))
+progress_2019$subject <- ifelse(grepl("Math", progress_2019$variable), "Math", "Reading")
+progress_2019$variable <- gsub('Math_3', '3', progress_2019$variable)
+progress_2019$variable <- gsub('Reading_3', '3', progress_2019$variable)
+progress_2019$variable <- gsub('Math_4', '4', progress_2019$variable)
+progress_2019$variable <- gsub('Reading_4', '4', progress_2019$variable)
+progress_2019$variable <- gsub('Math_5', '5', progress_2019$variable)
+progress_2019$variable <- gsub('Reading_5', '5', progress_2019$variable)
+progress_2019$variable <- gsub('Math_6', '6', progress_2019$variable)
+progress_2019$variable <- gsub('Reading_6', '6', progress_2019$variable)
+progress_2019$variable <- gsub('Math_7', '7', progress_2019$variable)
+progress_2019$variable <- gsub('Reading_7', '7', progress_2019$variable)
+progress_2019$variable <- gsub('Math_8', '8', progress_2019$variable)
+progress_2019$variable <- gsub('Reading_8', '8', progress_2019$variable)
+```
+
+```{r, fig.width=10,fig.height=8}
+# draw graph
+progress <- ggplot(progress_2019, aes(x= variable, y = value)) +
+  geom_violin(trim = FALSE)+
+  geom_jitter(position=position_jitter(0.1),  
+              alpha = 0.5, 
+              aes(color = subject == "Reading")) +
+  geom_hline(yintercept = 50,  linetype="dashed", color = "red") +
+  facet_wrap( ~ subject,nrow = 1) +
+  stat_summary(fun.y=median, geom="line", aes(group=1))  + 
+  stat_summary(fun.y=median, geom="point") +
+  scale_color_manual(labels = c("Math", "Reading"), 
+                     values = c("TRUE" = "#FBF4B1", "FALSE" = "#FFCBCB")) +
+  xlab("Grades") + ylab("NWEA Growth (50 Stays Same)") + 
+  scale_y_continuous(expand = c(0, 0)) +
+  annotate("label",  x = 6, y = 70,  label = "Median") +
+  annotate("text",  x = 1.5, y = 46,  label = "National Average") +
+  labs(
+    title = "CPS Students are Making Progress in both Math and Reading \n especially for Grade 7 and 8", 
+    subtitle = "SY1819, NWEA Growth for Math and Reading for Students in Grade 3 - 8", 
+    caption = "CPS School Data Report: School Progress Reports SY1819.",
+    color = "Subject") +
+  theme(
+    plot.title = element_text(size = 13, hjust = 0.5, face = "bold", family = "Helvetica"),
+    plot.subtitle = element_text(size = 11, hjust = 0.5, family = "Palatino"),
+    plot.caption = element_text(size = 8, hjust = 1, face="bold.italic"), 
+    axis.title.x = element_text(size=12, face="bold"), 
+    axis.title.y = element_text(size=12, face="bold"),
+    strip.text.x = element_text(size = 10, face="bold"),
+    panel.background = element_blank())
+
+progress
+```
+
+##### This graphs shows how 402 CPS elementary school students are making progress in both of their NEWA math and reading attainment exams. Growth measures the change in between two points in time. This growth is compared to the average national growth for schools that started in the same place. A 50th percentile score means the school grew at the same rate as the national average. The black lines show the median of Growth among CPS students of different grades. We can observe that, median level of 7th grade and 8th grade in both math and reading are exceeding the national average. Despite the fact that Growth for different elementary schools varied a lot, and there are schools with very low Growth performance.
