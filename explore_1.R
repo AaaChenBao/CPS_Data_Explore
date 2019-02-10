@@ -1,62 +1,131 @@
 # laoding 
-library('tidyverse')
-library('dplyr')
-library('readxl')
-library('ggplot2')
-library('gridExtra')
-library("reshape2")
+library(tidyverse)
+library(dplyr)
+library(readxl)
+library(ggplot2)
+library(gridExtra)
+library(reshape2)
 
-install.packages('tidyverse')
+# Bar chart - Use the title to tell me why this matters! I can look at the axis titles to see what the chart is. This is especially important since... I don't know why this chart matters. 
+# Do you expect your viewers to know which networks are which? Are they clustered geographically in some what that lets you tell me something more informative than just their number?
+# The dotted red line is also entirely unlabeled. While I took a minute to surmise it was the average across networks, most people won't. Include this as a direct label, rather than part of the subtitle. 
+# Title and subtitle text is a bit small, relative to the graph size.
+# "Variable" is not an appropriate name for the categorical color scale for school type. 
+# You can remove extra y-axis space (between bars and labels) with: + scale_y_continuous(expand = c(0, 0))
+
+
+# Bubble chart - Switch the title and subtitle please.
+# I'd add '%' signs to the x ans y axis tick mark labels.
+# I'm worried about occlusion. Did you consider adding alpha (for transparency) so you can see circles hidden in the clump?
+# You can also improve this by giving the graph more space, again with:
+# + scale_x_continuous(expand = c(0, 0)) + scale_y_continuous(expand = c(0, 0))
+# Also, you could move the legends to within the top left corner of the graph, making more room for it to expand down.
+# Lastly: you are using a continuous color scale for your school quality rating. Looking at the legend, it's not clear how many values there are (2,3,4? or 1,2,3,4,5?). Instead of this, use an ordinal color scale. Five different colors (that appear ordered, like the color wheel) for the numbers 1-2-3-4-5 (assuming I'm guessing right that there are 5 ratings).
+# You can do this with:  https://ggplot2.tidyverse.org/reference/scale_manual.html
+
+
+# Small multiple scatterplots: 
+# Too many colors! I cannot tell the difference between several of the greens, the pinks, the blues, or the oranges.  Instead of this, label just a few of the more interesting dots and tell the viewer why this all matters.
+# Mentioning averages is fine, but the subtitle is not the place to do that. In a scatterplot you could do this with a dotted line, or with a dot just for averages. That said, it's not clear to me why you're including this information. 
+# I'm not sure I think your subtitle is true here. There are clearly many high FRL networks with low billingual percentages.
+
 # graph 1 
 # read in files
-# 2019 data
-demo_2019 <- read_excel("Demographics_LEPSPED_2019.xls", sheet = "Networks", range = cell_rows(4:25),
-                        col_names = c("Network", "Population", "Bi_no", "Bi_per", "SpEd_no", 
-                                      "SpEd_per", "FreeLunch_no", "FreeLunch_per"))
-demo_2019$year <- rep(2019,nrow(demo_2019))
-
-# 2018 data
-demo_2018 <- read_excel("Demographics_LEPSPED_2018.xls", sheet = "Networks", range = cell_rows(4:21),
-                        col_names = c("Network", "Population", "Bi_no", "Bi_per", "SpEd_no", 
-                                      "SpEd_per", "FreeLunch_no", "FreeLunch_per"))
-demo_2018$year <- rep(2018,nrow(demo_2018))
-
-# 2017 data
-demo_2017 <- read_excel("Demographics_LEPSPED_2017.xls", sheet = "Networks", range = cell_rows(4:22),
-                        col_names = c("Network", "Population", "Bi_no", "Bi_per", "SpEd_no", 
-                                      "SpEd_per", "FreeLunch_no", "FreeLunch_per"))
-demo_2017$year <- rep(2017,nrow(demo_2017))
-
-
-# combine dataset from all years
-demo_all = bind_rows(demo_2019, demo_2018, demo_2017) 
-
-
-# rename cell 
-demo_all$Network <- gsub("Service Leadership Academies", "SLA", demo_all$Network)
-
-# convert values to numeric and percentage
-demo_all$Bi_per <- as.numeric(as.character(demo_all$Bi_per)) * 100
-demo_all$SpEd_per <- as.numeric(as.character(demo_all$SpEd_per)) * 100
-demo_all$FreeLunch_per <- as.numeric(as.character(demo_all$FreeLunch_per)) * 100
+demo_all <- read_csv("demo_all.csv", col_names = TRUE)
 
 
 # draw graph
-lunch_bi <- ggplot(demo_all, aes(x = FreeLunch_per, y = Bi_per, col = Network)) +
-  geom_jitter(alpha = 0.9) +
+lunch_bi <- ggplot(demo_all,  aes(x = FreeLunch_per, y = Bi_per)) +
+  geom_point(alpha = 1, aes(color=Network)) +
+  geom_smooth(method='lm',formula=y~x) +
+  geom_hline(data=subset(demo_all, year == 2019), 
+             aes(yintercept = mean(Bi_per), group = year), linetype="dashed", color = "#f25f5c", size=.5) +
+  geom_hline(data=subset(demo_all, year == 2018), 
+             aes(yintercept = mean(Bi_per), group = year), linetype="dashed", color = "#f25f5c", size=.5) +
+  geom_hline(data=subset(demo_all, year == 2017), 
+             aes(yintercept = mean(Bi_per), group = year), linetype="dashed", color = "#f25f5c", size=.5) +
+  geom_vline(data=subset(demo_all, year == 2019), 
+             aes(xintercept = mean(FreeLunch_per), group = year), linetype="dashed", color = "#5ed7bf", size=.5) +
+  geom_vline(data=subset(demo_all, year == 2018), 
+             aes(xintercept = mean(FreeLunch_per), group = year), linetype="dashed", color = "#5ed7bf", size=.5) +
+  geom_vline(data=subset(demo_all, year == 2017), 
+             aes(xintercept = mean(FreeLunch_per), group = year), linetype="dashed", color = "#5ed7bf", size=.5) +
   facet_wrap( ~ year, nrow =1) +
   xlab("% Free/Reduced Lunch") + ylab("% Bilingual") +
-  xlim(50, 100) + ylim(0, 50) +
-  labs(title = "CPS Networks Percentage Free/Reduced Lunch vs.Percentage Bilingual 2017 - 2019", 
-       subtitle = "Average % free/reduced lunch is 80.03. Average % Blingual is 15.68. 
-       Networks with higher % free/reduced lunch population are assoicated with higher % bilingual population", 
-       caption = "CPS School Data Report: Limited English Proficiency, Special Ed, Low Income, IEP.") +
-  theme(aspect.ratio=1)
+  xlim(50, 95) + ylim(5, 50) +
+  labs(
+    title = "Networks with More Bilingual Pooulation are also Networks \n with more Economically Disadvantaged Population",
+    subtitle = "Distributions of 2017-2019, only for Networks' with more than 15% bilingual population", 
+    caption = "CPS School Data Report: Limited English Proficiency, Special Ed, Low Income, IEP.") +
+  theme(
+    aspect.ratio=1, 
+    plot.title = element_text(size = 13, hjust = 0.5, face = "bold", family = "Helvetica"),
+    plot.subtitle = element_text(size = 11, hjust = 0.5, family = "Palatino"),
+    plot.caption = element_text(size = 8, hjust = 1, face="bold.italic"), 
+    axis.title.x = element_text(size=12, face="bold"), 
+    axis.title.y = element_text(size=12, face="bold"),
+    strip.text.x = element_text(size = 10, face="bold"),
+    panel.background = element_blank())
 
 lunch_bi
 
 ggsave("lunch_bi.pdf")
 
+
+
+
+
+
+# revision for Grpah 2, enrollment by over time 
+
+# read in files
+race <- read_excel("Racial_Ethnic_Survey.xlsx", sheet = "Sheet1")
+race$Other <- race$`Asian/Pacific Islander` + race$`Native American` + race$`Multi-Racial` +
+  race$Asian + race$`Hawaiian/Pacific Islander` + race$`Not Available`
+var_list <- c("Year", "Other", "Hispanic", "African American", "White")
+race <- race[var_list]
+race <- melt(race, id.var="Year")
+colnames(race) <- c("Year", "Ethnicity", "Percentage")
+race$Percentage <- lapply(race$Percentage, round, 1)
+
+# draw graph
+race_bar <- ggplot(race, aes(x= Year, y = Percentage, fill = Ethnicity, label = Percentage)) +
+  coord_flip() +
+  geom_bar(stat = "identity", alpha = 0.9) +
+  geom_text(data=race, size = 3, position = position_stack(vjust = 0.5)) +
+  scale_fill_manual(values=c("#6C5B7B", "#F8B195", "#F67280", "#C06C84")) + 
+  scale_x_continuous(breaks=seq(2010, 2019, 1), expand = c(.01, 0)) +
+  labs(
+    title = "More than 80% Chicago Public Schools Students are \n African American and Hispanic Students", 
+    subtitle = "From 2010-2019, relatively more white students and students with other race enrolled in CPS", 
+    caption = "CPS School Data Report 2010-2019: Racial/Ethnic Report.") +
+  theme(
+    plot.title = element_text(size = 13, hjust = 0.5, face = "bold", family = "Helvetica"),
+    plot.subtitle = element_text(size = 11, hjust = 0.5, family = "Palatino"),
+    plot.caption = element_text(size = 8, hjust = 1, face="bold.italic"), 
+    axis.title.x = element_text(size=12, face="bold"), 
+    axis.title.y = element_text(size=12, face="bold"),
+    strip.text.x = element_text(size = 10, face="bold"),
+    axis.text.x = element_text(angle = 0, hjust = 1),
+    panel.background = element_blank())
+
+  
+race_bar
+
+
+
+
+  geom_text(data=subset(enroll_network,value > 20), size = 3, position = position_stack(vjust = 0.5)) +
+  xlab("Networks") + ylab("Enrollment") +
+  scale_y_continuous(labels = scales::comma) +
+  scale_fill_manual(values=c("355C7D","F8B195", "F67280", "C06C84")) +
+  labs(title = "CPS FY1819 20th Day Enrollment Breakdown by Networks", 
+       subtitle = "Average Network Enrollmment is 12766.
+       Networks specialize in providing Elementary or High Shcool Education", 
+       caption = "CPS School Data Report: Racial/Ethnic Report.") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+enrollment
 
 
 # graph 2 
@@ -81,7 +150,7 @@ Network_Info_4 <- read_excel("Accountability_SQRPratings_2018-2019_SchoolLevel.x
                              col_names = c("School ID", "Name", "Network"))
 Network_Info_4 <- Network_Info_4[-(1:3), , drop = FALSE]
 
-enroll <- read_excel("Demographics_20thDay_2019.xls", sheet = "Schools")
+enroll <- read_excel("enrollment/Demographics_20thDay_2019.xls", sheet = "Schools")
 enroll <- enroll[complete.cases(enroll), ]
 
 # combine dataset from all school types
@@ -150,22 +219,31 @@ SQRP <- SQRP[SQRP$Graduation!=0 & SQRP$Attendance!=0 & SQRP$College_enroll!=0, ]
 # draw graph
 sqrp_grad_attend <- ggplot(SQRP, aes(x = Graduation, y = Attendance, size = College_enroll, fill = SQRP_Score)) +
   geom_point(shape = 21) + 
-  xlab("4-Year Cohort Graduation Rate") + ylab("Average Daily Attendance Rate") +
-  labs(size = "College Enrollment Rate", fill = "School Quality Rating") +
+  xlab("% 4-Year Cohort Graduation Rate") + ylab("% Average Daily Attendance Rate") +
+  labs(size = "% College Enrollment Rate", fill = "School Quality Rating") +
   scale_x_continuous(limits=c(20, 100), breaks=c(20, 30, 40, 50, 60, 70, 80, 90, 100)) +
   scale_y_continuous(limits=c(70, 100), breaks=c(70, 75, 80, 85, 90, 95, 100)) +
-  scale_size(range = c(0, 12),
+  scale_size(range = c(0,6),
              breaks = c(30, 40, 50, 60, 70, 80, 90, 100),
              labels = c(30, 40, 50, 60, 70, 80, 90, 100)) +
-  scale_fill_continuous(low = "khaki1", high = "red2") +
-  labs(title = "CPS FY1819 High School SQRP Ratings vs. Graduation, Attendance, and College Enrollment", 
-       subtitle = "High school SQRP ratings are heavily determined by graduation, attendance, and college enrollment.", 
-       caption = "CPS School Data Report: School Quality Rating Policy Results and Accountability Status
+  labs(
+    title = "High School SQRP Ratings are Heavily Determined by \n Graduation, Attendance, and College Enrollment", 
+    subtitle = "CPS FY1819 High School SQRP Ratings vs. Graduation, Attendance, and College Enrollment", 
+    caption = "CPS School Data Report: School Quality Rating Policy Results and Accountability Status
        *Outlier removed for High School with missing values and extreme values") +
+  theme(
+    plot.title = element_text(size = 13, hjust = 0.5, face = "bold", family = "Helvetica"),
+    plot.subtitle = element_text(size = 11, hjust = 0.5, family = "Palatino"),
+    plot.caption = element_text(size = 8, hjust = 1, face="bold.italic"), 
+    axis.title.x = element_text(size=12, face="bold"), 
+    axis.title.y = element_text(size=12, face="bold"),
+    strip.text.x = element_text(size = 10, face="bold"),
+    panel.background = element_blank()) + 
   theme(legend.position = "bottom", legend.direction = "horizontal") 
-
+   
 
 sqrp_grad_attend
 
 
 ggsave("sqrp_grad_attend.pdf")
+
