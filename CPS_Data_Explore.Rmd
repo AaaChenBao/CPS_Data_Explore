@@ -1,0 +1,1750 @@
+---
+output:
+  html_document:
+    toc: true
+    toc_depth: 6
+    toc_float: true
+    code_folding: hide
+    theme: sandstone
+    includes: 
+      in_header: "favicon.html"
+---
+
+<style>
+
+.btn 
+{
+    border-width: 0 0px 0px 0px;
+    font-weight: normal;
+    text-transform: ;
+}
+.btn-default 
+{
+    color: #FFC300;
+    background-color: #FFFFFF;
+    border-color: #FFFFFF;
+}
+
+
+toc {
+  text-align: left;
+}
+
+body {
+  text-align: justify;
+  font-family: Crimson Text;
+  font-size: 14pt;
+}
+
+h1{
+  font-family: Crimson Text;
+  font-size: 22pt;
+  text-align: left;
+}
+
+h2{
+  font-family: Crimson Text;
+  font-size: 20pt;
+  text-align: left;  
+}
+
+h3{
+  font-family: Crimson Text;
+  font-size: 18pt;
+  text-align: left;
+}
+
+h4{
+  font-family: Crimson Text;
+  font-size: 16pt;
+  text-align: left;
+}
+
+h5{
+  font-family: Crimson Text;
+  font-size: 14pt;
+  text-align: left;
+}
+
+h6{
+  font-family: Crimson Text;
+  font-size: 10pt;
+  text-align: left;
+}
+
+</style>
+
+
+
+
+
+```{r, tidy=TRUE, warning=FALSE, message=FALSE}
+# laoding 
+library(tidyverse)
+library(dplyr)
+library(plyr)
+library(readxl)
+library(ggplot2)
+library(gridExtra)
+library(reshape2)
+library(scales)
+library(devtools)
+library(plotly)
+library(data.table)
+library(scales)
+library(extrafont)
+library(here)
+library(sf)
+library(rgeos)
+library(ggrepel)
+library(ggmap)
+library(ggpubr)
+```
+
+#CPS Data Explore
+
+<center>
+![Chicago_Pic](437679.jpg)
+</center>
+
+<style>
+div.blue { background-color:#e6f0ff; border-radius: 5px; padding: 20px;}
+</style>
+<div class = "blue">
+
+The following graphs present data of Chicago Public Schools from different aspects, including enrollment, demographic, performance metrics, etc.  
+
+</div>
+
+###Overview of CPS
+Chicago Public Schools (CPS), currently contains 479 elementary schools, and 165 high schools in the school district. Given the number of students enrolled in school year 2018-2019, 76.6% of the population are economically disadvantages students, 18.7% are English language learners, and 14.1% are students with individualized education programs (basically students with disabilities).
+
+***
+###Enrollment
+
+```{r, tidy=TRUE, warning=FALSE, message=FALSE}
+
+# grpah 1: enrollment
+# function - generate new variables 
+gen_var <- function(df, year){
+  df$year <- year 
+  df$kindergarten <- df["PE"] + df["PK"] + df["K"]
+  df$elementary <- df["01"] + df["02"] + df["03"] + df["04"] + 
+    df["05"] + df["06"] + df["07"] + df["08"]
+  df$high <- df["09"] + df["10"] + df["11"] + df["12"]  
+  var_list <- c('year', 'kindergarten', 'elementary', 'high')
+  df <- df[var_list]
+  df <- sapply( df, as.numeric )
+  return(df)
+}
+
+
+# read in files
+enroll_2019 <- 
+  read_excel(here("data/enrollment", 
+                  "Demographics_20thDay_2019.xls"), 
+             sheet = "Schools")
+enroll_2019 <- 
+  enroll_2019[enroll_2019$"School Name" == "District Total 2018-2019",]
+enroll_2019 <- gen_var(enroll_2019, 2019)
+
+
+enroll_2018 <-
+  read_excel("data/enrollment/Demographics_20thDay_2018.xls", sheet = "Schools")
+enroll_2018 <-
+  enroll_2018[enroll_2018$"School Name" == "District Total 2017-2018",]
+enroll_2018 <- gen_var(enroll_2018, 2018)
+
+
+enroll_2017 <- 
+  read_excel("data/enrollment/Demographics_20thDay_2017.xls", sheet = "Schools")
+enroll_2017 <-
+  enroll_2017[enroll_2017$"School Name" == "District Total 2016-2017",]
+enroll_2017 <- gen_var(enroll_2017, 2017)
+
+
+enroll_2016 <- 
+  read_excel("data/enrollment/Demographics_20thDay_2016.xls", sheet = "Sheet1")
+enroll_2016 <-
+  enroll_2016[enroll_2016$"Network" == "District Totals",]
+enroll_2016 <-
+  enroll_2016[rowSums( is.na(enroll_2016) ) <= 10, ]
+enroll_2016 <- gen_var(enroll_2016, 2016)
+
+
+enroll_2015 <- 
+  read_excel("data/enrollment/Demographics_20thDay_2015.xls", sheet = "Sheet1")
+enroll_2015 <-
+  enroll_2015[enroll_2015$"Network" == "District Totals",]
+enroll_2015 <-
+  enroll_2015[rowSums( is.na(enroll_2015) ) <= 10, ]
+enroll_2015 <- gen_var(enroll_2015, 2015)
+
+
+enroll_2014 <- 
+  read_excel("data/enrollment/Demographics_20thDay_2014.xls", sheet = "enrollment_20th_day_2014")
+enroll_2014 <-
+  enroll_2014[enroll_2014$"Network" == "District Totals",]
+enroll_2014 <-
+  enroll_2014[rowSums( is.na(enroll_2014) ) <= 10, ]
+enroll_2014 <- gen_var(enroll_2014, 2014)
+
+
+enroll_2013 <- 
+  read_excel("data/enrollment/Demographics_20thDay_2013.xls", sheet = "enrollment_20th_day_2013")
+enroll_2013 <-
+  enroll_2013[enroll_2013$"Network" == "District Total",]
+enroll_2013 <-
+  enroll_2013[rowSums( is.na(enroll_2013) ) <= 10, ]
+enroll_2013 <- gen_var(enroll_2013, 2013)
+
+
+enroll_2012 <- 
+  read_excel("data/enrollment/Demographics_20thDay_2012.xls", sheet = "enrollment_20th_day_2012")
+enroll_2012 <-
+  enroll_2012[enroll_2012$"Network" == "District Totals",]
+enroll_2012 <-
+  enroll_2012[rowSums( is.na(enroll_2012) ) <= 10, ]
+enroll_2012 <- gen_var(enroll_2012, 2012)
+
+
+enroll_2011 <- 
+  read_excel("data/enrollment/Demographics_20thDay_2011.xls", sheet = "enrollment_20th_day")
+enroll_2011 <-
+  enroll_2011[enroll_2011$"Area" == "District Totals",]
+enroll_2011 <-
+  enroll_2011[rowSums( is.na(enroll_2011) ) <= 10, ]
+enroll_2011 <- gen_var(enroll_2011, 2011)
+
+
+enroll_2010 <- 
+  read_excel("data/enrollment/Demographics_20thDay_2010.xls", sheet = "Sheet1")
+enroll_2010 <-
+  enroll_2010[enroll_2010$"Area" == "District Totals",]
+enroll_2010 <-
+  enroll_2010[rowSums( is.na(enroll_2010) ) <= 10, ]
+enroll_2010 <- gen_var(enroll_2010, 2010)
+
+
+enroll_2009 <- 
+  read_excel("data/enrollment/Demographics_20thDay_2009.xls", sheet = "Query1")
+enroll_2009 <- 
+  enroll_2009[enroll_2009$"Area" == "Dsitrict Totals",]
+enroll_2009 <-
+  enroll_2009[rowSums( is.na(enroll_2009) ) <= 10, ]
+enroll_2009 <- gen_var(enroll_2009, 2009)
+
+
+enroll_2008 <- 
+  read_excel("data/enrollment/Demographics_20thDay_2008.xls", sheet = "Sheet1")
+enroll_2008 <- 
+  enroll_2008[enroll_2008$"Area" == "District Totals",]
+enroll_2008 <-
+  enroll_2008[rowSums( is.na(enroll_2008) ) <= 10, ]
+enroll_2008$K <- enroll_2008["Full-Day\nK"] + enroll_2008["Half-Day\nK"]
+enroll_2008$"02" <- enroll_2008["02'"]
+enroll_2008 <- gen_var(enroll_2008, 2008)
+
+enroll_2007 <- 
+  read_excel("data/enrollment/Demographics_20thDay_2007.xls", sheet = "Sheet1")
+enroll_2007 <- 
+  enroll_2007[enroll_2007$"Area" == "District Totals",]
+enroll_2007 <-
+  enroll_2007[rowSums( is.na(enroll_2007) ) <= 10, ]
+enroll_2007$PE <- enroll_2007["Head\nStart"]
+enroll_2007$PK <- enroll_2007["Other\nPK"] + enroll_2007["State\nPK"] + enroll_2007["PK\nSPED"]
+enroll_2007$K <- enroll_2007["Full-Day\nK"] + enroll_2007["Half-Day\nK"]
+enroll_2007 <- gen_var(enroll_2007, 2007)
+
+
+enroll_2006 <- 
+  read_excel("data/enrollment/Demographics_20thDay_2006.xls", sheet = "enrollment_0608")
+enroll_2006 <- 
+  enroll_2006[enroll_2006$"Area" == "District Totals",]
+enroll_2006 <-
+  enroll_2006[rowSums( is.na(enroll_2006) ) <= 10, ]
+enroll_2006$PE <- enroll_2006["Head\nStart"]
+enroll_2006$PK <- enroll_2006["Other\nPK"] + enroll_2006["State\nPK"] + enroll_2006["PK\nSPED"]
+enroll_2006$K <- enroll_2006["Full-Day\nK"] + enroll_2006["Half-Day\nK"]
+enroll_2006 <- gen_var(enroll_2006, 2006)
+
+enroll_all = bind_rows(enroll_2019, enroll_2018, enroll_2017, enroll_2016, enroll_2015,
+                    enroll_2014, enroll_2013, enroll_2012, enroll_2011, enroll_2010,
+                    enroll_2009, enroll_2008, enroll_2007, enroll_2006) 
+enroll_all$'total population' <- enroll_all$kindergarten + enroll_all$elementary + enroll_all$high
+
+
+enroll_all <- enroll_all[c("year", "total population", "kindergarten", "elementary", "high")]
+colnames(enroll_all) <- c("year", "Total Population", "Kindergarten", "Elementary School", "High School")
+
+
+enroll_all <- melt(enroll_all, id.var="year")
+colnames(enroll_all) <- c("Year", "Student_Type", "Headcount")
+
+```
+
+```{r, fig.width=10,fig.height=8}
+
+# draw graph
+enrollment <- 
+  ggplot(enroll_all, aes(x = Year, 
+                         y = Headcount)) +
+  
+  geom_point(aes(color = Student_Type)) +
+  
+  geom_line(aes(color = Student_Type)) +
+  
+  geom_text(data = subset(enroll_all,Year == 2006), 
+            aes(label = Headcount), 
+            size = 3, 
+            vjust = 2, 
+            hjust = 0.3) +  
+  
+  geom_text(data = subset(enroll_all,Year == 2019), 
+            aes(label = Headcount), 
+            size = 3, 
+            vjust = -0.9, 
+            hjust = 0.5) +  
+  
+  geom_text(data = subset(enroll_all,Year == 2010), 
+            aes(label = Headcount), 
+            size = 3, 
+            vjust = 2, 
+            hjust = 0.3) +  
+  
+  geom_text(data = subset(enroll_all,Year == 2015), 
+            aes(label = Headcount), 
+            size = 3, 
+            vjust = -0.9, 
+            hjust = 0.5) +  
+  
+  facet_wrap( ~ Student_Type, 
+              scales = "free_y",
+              nrow = 4, 
+              labeller = as_labeller(c("High School" = "High School Enrollment Dropped by 3265", 
+                                       "Elementary School" = "Elementary School Enrollment Dropped by 47492", 
+                                       "Total Population" ="Total Enrollment Dropped by 59611" ,
+                                       "Kindergarten" = "Kindergarten Enrollment Dropped by 8854"))) +
+  
+  scale_x_continuous(breaks = seq(2006, 2019, 1)) +
+  scale_color_manual(values = c("High School" = "#F59AA3", 
+                                "Elementary School" = "#ffa45c", 
+                                "Total Population" ="#34a7b2" ,
+                                "Kindergarten" = "#5b2e35")) +
+  
+  labs(
+    title = "Chicago Public Schools Enrollment Drops by 60,000 Students in the Past 14 Years ", 
+    subtitle = "Enrollment drops for all types of students, from kindergarten to high school\n",
+    caption = "CPS School Data Report") +
+  
+  xlab("Year") + 
+  ylab("Enrollment Headcount") + 
+  
+  theme(
+    plot.title = element_text(size = 18, hjust = 0.5, face = "bold", family = "Concert One"),
+    plot.subtitle = element_text(size = 16, hjust = 0.5, family = "Crimson Text"),
+    plot.caption = element_text(size = 12, hjust = 1, family = "Lobster"), 
+    
+    axis.title.x = element_text(size=14, face="bold", family =  "Crimson Text" ), 
+    axis.title.y = element_text(size=14, face="bold", family =  "Crimson Text" ),
+    
+    axis.text.y = element_blank(),
+    
+    axis.ticks.y = element_blank(),
+
+    panel.background = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.major.y = element_line(size = 0.2, linetype = 'solid', colour = "lightgray"),
+   
+    strip.background = element_blank(), 
+    strip.text.x = element_text(size = 14, face="bold", color = "#3c4f65", family = "Crimson Text" ),
+    
+    legend.position = "bottom",
+    legend.spacing.x = unit(0.5, 'cm'),
+    legend.text = element_text(size=10, face="bold",  family = "Crimson Text" ),
+    legend.title = element_blank(),
+
+    plot.background = element_rect(fill = "#FAFAFA"))
+enrollment 
+```
+
+This graphs shows that, over the past 10 year, CPS has experienced drop in enrollment. Enrollments drop throughout all its schools, from kindergartens, elementary schools, to high schools. Noteworthy, the 2019 (20th day enrollment) total population has dropped almost 50,000 compared to 2010, from 409279 to 361314. Within each student type, the biggest drop comes from elementary school students which also serve as the majotiry group of the population. 
+
+***
+###Racial/Ethnicity
+
+```{r, tidy=TRUE, warning=FALSE, message=FALSE}
+
+# graph 2
+
+# prepare data
+column_name_1 <- c('type', 'total',
+                   'white', 'w_per', 'african american', 'a_per', 'pacific', 'p_per', 
+                   'native american', 'n_per', 'hispanic', 'h_per', 'multi', 'm_per', 
+                   'asian', 'as_per', 'hawaiian', 'ha_per', 'na', 'na_per')
+
+column_name_2 <- c('type', 'total',
+                   'white', 'w_per', 'african american', 'a_per', 'native american', 'n_per',
+                   'pacific', 'p_per', 'hispanic', 'h_per')
+
+column_name_3 <- c('type', 'total',
+                   'white', 'w_per', 'african american', 'a_per', 'native american', 'n_per',
+                   'pacific', 'p_per', 'hispanic', 'h_per', 'multi', 'm_per')
+
+
+# function - generate new variables 
+gen_var <- function(df, year, column){
+  df <- df[rowSums(is.na(df)) < 10, ]
+  colnames(df) <- column 
+  df$type <- NULL
+  df$Year <- year 
+  df$African_American <- as.numeric(df["african american"]) / as.numeric(df["total"]) * 100
+  df$Hispanic <- as.numeric(df["hispanic"]) / as.numeric(df["total"]) * 100
+  df$White <- as.numeric(df["white"]) / as.numeric(df["total"]) * 100
+  if (("asian" %in% names(df)) && ("multi" %in% names(df)))
+  {
+    df$Asian <- as.numeric(df["asian"]) / as.numeric(df["total"]) * 100;
+    df$Other <- (as.numeric(df["pacific"]) + as.numeric(df["native american"]) + as.numeric(df["multi"]) + 
+                   as.numeric(df["hawaiian"]) + as.numeric(df["na"])) / as.numeric(df["total"]) * 100;
+  }
+  else if ((!"asian" %in% names(df)) && (!"multi" %in% names(df)))
+  {
+    df$Asian <- 0;
+    df$Other <- (as.numeric(df["pacific"]) + as.numeric(df["native american"])) / as.numeric(df["total"]) * 100;
+  }
+  else if  ((!"asian" %in% names(df)) && ("multi" %in% names(df)))
+  {
+    df$Asian <- 0;
+    df$Other <- (as.numeric(df["pacific"]) + as.numeric(df["native american"]) + as.numeric(df["multi"])) / as.numeric(df["total"]) * 100
+  }
+  var_list <- c('African_American', 'Hispanic', 'White', 'Asian', 'Other', 'Year')
+  df <- df[var_list]
+  return(df)
+}
+
+
+# read in files
+race_2019 <- 
+  read_excel("data/demo_racial/Demographics_RacialEthnic_2019.xls", sheet = "Grades", skip = 1) 
+race_2019 <- 
+  race_2019[race_2019$"Grade Level" == "District Total",]
+race_2019 <- gen_var(race_2019, 2019, column_name_1)
+
+
+
+race_2018 <- 
+  read_excel("data/demo_racial/Demographics_RacialEthnic_2018.xls", sheet = "Grades", skip = 1) 
+race_2018 <- 
+  race_2018[race_2018$"Grade Level" == "District Total",]
+race_2018 <- gen_var(race_2018, 2018, column_name_1)
+
+
+race_2017 <- 
+  read_excel("data/demo_racial/Demographics_RacialEthnic_2017.xls", sheet = "Grades", skip =1) 
+race_2017 <- 
+  race_2017[race_2017$"Grade Level" == "District Total",]
+race_2017 <- gen_var(race_2017, 2017, column_name_1)
+
+
+race_2016 <- 
+  read_excel("data/demo_racial/Demographics_RacialEthnic_2016.xls", sheet = "Grades", skip =1) 
+race_2016 <- 
+  race_2016[race_2016$"Grade Level" == "District Totals",]
+race_2016 <- gen_var(race_2016, 2016, column_name_1)
+
+
+race_2015 <- 
+  read_excel("data/demo_racial/Demographics_RacialEthnic_2015.xls", sheet = "Grades", skip =1) 
+race_2015 <- 
+  race_2015[race_2015$"Grade Level" == "District Totals",]
+race_2015 <- gen_var(race_2015, 2015, column_name_1)
+
+
+race_2014 <- 
+  read_excel("data/demo_racial/Demographics_RacialEthnic_2014.xls", sheet = "Grades", skip =1) 
+race_2014 <- 
+  race_2014[race_2014$"Grade Level" == "District Totals",]
+race_2014 <- gen_var(race_2014, 2014, column_name_1)
+
+race_2013 <- 
+  read_excel("data/demo_racial/Demographics_RacialEthnic_2013.xls", sheet = "Grades", skip =1) 
+race_2013 <- 
+  race_2013[race_2013$"Grade Level" == "District Totals",]
+race_2013 <- gen_var(race_2013, 2013, column_name_1)
+
+race_2012 <- 
+  read_excel("data/demo_racial/Demographics_RacialEthnic_2012.xls", sheet = "Grades", skip =1) 
+race_2012 <- 
+  race_2012[race_2012$"Grade Level" == "District Totals",]
+race_2012 <- gen_var(race_2012, 2012, column_name_1)
+
+
+race_2011 <- 
+  read_excel("data/demo_racial/Demographics_RacialEthnic_2011.xls", sheet = "Grades", skip =1) 
+race_2011 <- 
+  race_2011[race_2011$"..1" == "District Totals",]
+race_2011 <- gen_var(race_2011, 2011, column_name_1)
+
+
+race_2010 <- 
+  read_excel("data/demo_racial/Demographics_RacialEthnic_2010.xls", sheet = "Grades", skip =1) 
+race_2010 <- 
+  race_2010[race_2010$"..1" == "Dsitrict Totals",]
+race_2010 <- gen_var(race_2010, 2010, column_name_2)
+
+
+
+race_2009 <- 
+  read_excel("data/demo_racial/Demographics_RacialEthnic_2009.xls", sheet = "Grades", skip =1) 
+race_2009 <- 
+  race_2009[race_2009$"..1" == "District Totals",]
+race_2009 <- gen_var(race_2009, 2009, column_name_2)
+
+
+
+race_2008 <- 
+  read_excel("data/demo_racial/Demographics_RacialEthnic_2008.xls", sheet = "Grades", skip =1, range = cell_cols("A:N")) 
+race_2008 <- 
+  race_2008[race_2008$"..1" == "Grand Total",]
+race_2008 <- gen_var(race_2008, 2008, column_name_3)
+
+
+race_2007 <- 
+  read_excel("data/demo_racial/Demographics_RacialEthnic_2007.xls", sheet = "Totals_by_Grades", skip =1, range = cell_cols("A:N")) 
+race_2007 <- 
+  race_2007[race_2007$"..1" == "Grand Total",]
+race_2007 <- gen_var(race_2007, 2007, column_name_3)
+
+
+race_2006 <- 
+  read_excel("data/demo_racial/Demographics_RacialEthnic_2006.xls", sheet = "Totals by Grade", skip =1, range = cell_cols("A:N")) 
+race_2006 <- 
+  race_2006[race_2006$"..1" == "GRAND TOTAL",]
+race_2006 <- gen_var(race_2006, 2006, column_name_3)
+
+
+race_2005 <- 
+  read_excel("data/demo_racial/Demographics_RacialEthnic_2005.xlsx", sheet = "School Types", skip =1, range = cell_cols("B:M")) 
+race_2005 <- 
+  race_2005[race_2005$"..1" == "Grand Total",]
+race_2005 <- gen_var(race_2005, 2005, column_name_2)
+
+
+
+race_2004 <- 
+  read_excel("data/demo_racial/Demographics_RacialEthnic_2004.xls", sheet = "Totals by Types", skip =1, range = cell_cols("B:M")) 
+race_2004 <- 
+  race_2004[race_2004$"..1" == "Grand Total",]
+race_2004 <- gen_var(race_2004, 2004, column_name_2)
+
+
+race_2003 <- 
+  read_excel("data/demo_racial/Demographics_RacialEthnic_2003.xls", sheet = "Totals by Type", skip =1, range = cell_cols("B:M")) 
+race_2003 <- 
+  race_2003[race_2003$"..1" == "Grand Total",]
+race_2003 <- gen_var(race_2003, 2003, column_name_2)
+
+
+race_2002 <- 
+  read_excel("data/demo_racial/Demographics_RacialEthnic_2002.xls", sheet = "Totals by Types", skip =1, range = cell_cols("B:M")) 
+race_2002 <- 
+  race_2002[race_2002$"..1" == "Grand Total",]
+race_2002 <- gen_var(race_2002, 2002, column_name_2)
+
+
+race_2001 <- 
+  read_excel("data/demo_racial/Demographics_RacialEthnic_2001.xls", sheet = "Totals by Type", skip =1, range = cell_cols("B:M")) 
+race_2001 <- 
+  race_2001[race_2001$"..1" == "Grand Total",]
+race_2001 <- gen_var(race_2001, 2001, column_name_2)
+
+
+race_2000 <- 
+  read_excel("data/demo_racial/Demographics_RacialEthnic_2000.xls", sheet = "Totals by Type", skip =1, range = cell_cols("B:M")) 
+race_2000 <- 
+  race_2000[race_2000$"..1" == "Totals",]
+race_2000 <- gen_var(race_2000, 2000, column_name_2)
+
+
+race = bind_rows(race_2019, race_2018, race_2017, race_2016, race_2015,
+                       race_2014, race_2013, race_2012, race_2011, race_2010, race_2009,
+                       race_2008, race_2007, race_2006, race_2005, race_2004, race_2003,
+                       race_2002, race_2001, race_2000) 
+
+race$African_American <- -(race$African_American)
+race <- race[c('African_American','White',  'Hispanic', 'Year')]
+
+race <- melt(race, id.var="Year")
+colnames(race) <- c("Year", "Ethnicity", "Percentage")
+race$Percentage <- round(race$Percentage, digits = 2) 
+race$Year <- as.numeric(race$Year)
+
+```
+
+```{r, fig.width=10,fig.height=8}
+
+#draw graph
+race_bar <- 
+  ggplot(race, aes(x= Year, 
+                   y = Percentage, 
+                   group = Ethnicity, 
+                   fill = factor(Ethnicity, levels = c('African_American','Hispanic',  'White')), 
+                   label = sprintf("%0.2f", round(Percentage, digits = 2)))) +
+  
+  geom_bar(stat = "identity", 
+           width = 0.7, 
+           alpha = 0.95) + 
+  
+  geom_text(data = subset(race, Ethnicity == 'African_American'), 
+            aes(label = sprintf("%0.2f", round(abs(Percentage), 
+                                               digits = 2))), 
+            size = 3.5, 
+            position = position_stack(vjust = 0.3)) +
+  
+  geom_text(data = subset(race, Ethnicity != 'African_American'), 
+            size = 3.5, 
+            position = position_stack(vjust = 0.7)) +
+
+  coord_flip() +
+  
+  scale_x_discrete(limits = rev(race$Year), 
+                   expand = c(0, 0)) +
+  scale_y_continuous(breaks = (seq(-60, 60, 10)), 
+                     labels = abs(seq(-60, 60, 10)),
+                     expand = c(0.01, 0)) +
+  scale_fill_manual(values = c("#BBC7BA","#F9D5D3","#C1DAE0")) +
+  
+  labs(
+    title = "Growing Hispanic Population, Shrinking African American Population", 
+    subtitle = "More than 80% Chicago Public Schools Students are African American and Hispanic Students\n", 
+    caption = "CPS School Data Report") +
+  
+  theme(
+    plot.title = element_text(size = 18, hjust = 0.5, face = "bold", family = "Concert One"),
+    plot.subtitle = element_text(size = 16, hjust = 0.5, family = "Crimson Text"),
+    plot.caption = element_text(size = 12, hjust = 1, family = "Lobster"), 
+    
+    axis.title.x = element_text(size=14, face="bold", family =  "Crimson Text" ), 
+    axis.title.y = element_blank(),
+    
+    panel.background = element_blank(),
+    panel.grid.major.x = element_line(size = 0.2, linetype = 'solid', colour = "lightgray"),
+    panel.grid.major.y = element_blank(),
+    
+    strip.text.x = element_text(size = 10, face="bold"),
+
+    legend.position = "bottom",
+    legend.spacing.x = unit(0.5, 'cm'),
+    legend.text = element_text(size=13, face="bold", family = "Crimson Text" ),
+    legend.title = element_blank(),
+
+    plot.background = element_rect(fill = "#FAFAFA"))
+
+race_bar
+```
+
+This graphs shows the make up of race/ethnicity -- White, African American, and Hispanic percentage of CPS student bodys from 2000 - 2019. As a public school district in a big metropolitan area, CPS contains more than 80% of African American and Hispanic students. Over the last 20 years, the percentage of Hispanic students has been growing, and the percentage of African American Students has been shrinking. White students, however, counts for less than 10% of the total population for most of the years. In recent years, there is a slightly shift toward having more white students, and more students with other race/ethnicity which are majority Asian students. 
+
+***
+###Socioeconomics 
+
+```{r, tidy=TRUE, warning=FALSE, message=FALSE}
+
+# graph 3: race/ethnicity 
+
+# prepare data 
+# 2019 data
+demo_2019 <- read_excel("data/demo_special/Demographics_LEPSPED_2019.xls", sheet = "Networks", range = cell_rows(4:25),
+                        col_names = c("Network", "Population", "Bi_no", "Bi_per", "SpEd_no", 
+                                      "SpEd_per", "FreeLunch_no", "FreeLunch_per"))
+demo_2019$year <- rep(2019,nrow(demo_2019))
+
+# 2018 data
+demo_2018 <- read_excel("data/demo_special/Demographics_LEPSPED_2018.xls", sheet = "Networks", range = cell_rows(4:21),
+                        col_names = c("Network", "Population", "Bi_no", "Bi_per", "SpEd_no", 
+                                      "SpEd_per", "FreeLunch_no", "FreeLunch_per"))
+demo_2018$year <- rep(2018,nrow(demo_2018))
+
+# 2017 data
+demo_2017 <- read_excel("data/demo_special/Demographics_LEPSPED_2017.xls", sheet = "Networks", range = cell_rows(4:22),
+                        col_names = c("Network", "Population", "Bi_no", "Bi_per", "SpEd_no", 
+                                      "SpEd_per", "FreeLunch_no", "FreeLunch_per"))
+demo_2017$year <- rep(2017,nrow(demo_2017))
+
+# combine dataset from all years
+demo_all = bind_rows(demo_2019, demo_2018, demo_2017) 
+demo_all = demo_all[demo_all$Bi_per >= 0.15,]
+
+# rename cell 
+demo_all$Network <- gsub("Service Leadership Academies", "SLA", demo_all$Network)
+
+# convert values to numeric and percentage
+demo_all$Bi_per <- as.numeric(as.character(demo_all$Bi_per)) * 100
+demo_all$SpEd_per <- as.numeric(as.character(demo_all$SpEd_per)) * 100
+demo_all$FreeLunch_per <- as.numeric(as.character(demo_all$FreeLunch_per)) * 100
+
+```
+
+```{r, fig.width=10,fig.height=8}
+
+# draw graph
+lunch_bi <- 
+  ggplot(demo_all, aes(x = FreeLunch_per, 
+                       y = Bi_per)) +
+  
+  geom_point(alpha = 1, 
+             aes(color = Network), 
+             size = 3) +
+  
+  geom_smooth(method = 'lm',
+              formula = y~x, 
+              se = FALSE) +
+  
+  geom_hline(data = subset(demo_all, year == 2019), 
+             aes(yintercept = mean(Bi_per), 
+                 group = year), 
+             linetype = "dashed", 
+             color = "#f25f5c", 
+             size = .5) +
+  
+  geom_hline(data = subset(demo_all, year == 2018), 
+             aes(yintercept = mean(Bi_per), 
+                 group = year), 
+             linetype ="dashed", 
+             color = "#f25f5c", 
+             size=.5) +
+  
+  geom_hline(data = subset(demo_all, year == 2017), 
+             aes(yintercept = mean(Bi_per), 
+                 group = year), 
+             linetype ="dashed", 
+             color = "#f25f5c", 
+             size=.5) +
+  
+  geom_vline(data = subset(demo_all, year == 2019), 
+             aes(xintercept = mean(FreeLunch_per), 
+                 group = year), 
+             linetype = "dashed", 
+             color = "#5ed7bf", 
+             size =.5) +
+  
+  geom_vline(data = subset(demo_all, year == 2018), 
+             aes(xintercept = mean(FreeLunch_per), 
+                 group = year), 
+             linetype = "dashed", 
+             color = "#5ed7bf", 
+             size =.5) +
+  
+  geom_vline(data = subset(demo_all, year == 2017), 
+             aes(xintercept = mean(FreeLunch_per), 
+                 group = year), 
+             linetype = "dashed", 
+             color = "#5ed7bf", 
+             size =.5) +
+  
+  facet_wrap( ~ year, nrow =1, labeller = as_labeller(c("2017" = "FY 1617", 
+                                                        "2018" = "FY 1718", 
+                                                        "2019" = "FY 1819"))) +
+  scale_color_manual(values = c("Charter" = "#F59AA3", 
+                                "Network 1" = "#ffa45c", 
+                                "Network 2" =  "#34a7b2",
+                                "Network 3" = "#5b2e35",
+                                "Network 4" = "#a7d7c5",
+                                "Network 6" = "#ffe0e0",
+                                "Network 7" = "#caabd8",
+                                "Network 8" = "#fffa67",
+                                "Network 10" = "#a2eae2",
+                                "ISP" = "#b5525c")) +
+  # coord_fixed(ratio = 2) +
+  xlab("% Free/Reduced Lunch") + ylab("% Bilingual") +
+  xlim(50, 95) + ylim(5, 50) +
+  annotate("label",  x = 50, y = 48,  label = "Green: avg for Free Lunch \nRed: avg for Bilingual", size = 3, hjust = 0) +
+  labs(
+    title = "Networks with More Bilingual Population are also Networks \nwith more Economically Disadvantaged Population",
+    subtitle = "Distributions of 2017-2019, only for Networks' with more than 15% bilingual population\n", 
+    caption = "CPS School Data Report") +
+
+  theme(
+    plot.title = element_text(size = 18, hjust = 0.5, face = "bold", family = "Concert One"),
+    plot.subtitle = element_text(size = 16, hjust = 0.5, family = "Crimson Text"),
+    plot.caption = element_text(size = 12, hjust = 1, family = "Lobster"), 
+    
+    axis.title.x = element_text(size=14, face="bold", family =  "Crimson Text" ), 
+    axis.title.y = element_text(size=14, face="bold", family =  "Crimson Text" ),
+    
+    axis.ticks.x = element_blank(),
+    axis.ticks.y = element_blank(),
+    
+    panel.grid.major.y = element_line(size = 0.2, linetype = 'solid',
+                                    colour = "lightgray"), 
+    panel.grid.major.x = element_line(size = 0.2, linetype = 'solid',
+                                    colour = "lightgray"), 
+    panel.background = element_blank(),
+    
+    
+    legend.position = "bottom",
+    legend.spacing.x = unit(0.5, 'cm'),
+    legend.text = element_text(size=10, face="bold", family = "Crimson Text"),
+    legend.title = element_blank(), 
+    
+    strip.background = element_blank(), 
+    strip.text.x = element_text(size = 15, face="bold", color = "#3c4f65"),
+
+    plot.background = element_rect(fill = "#FAFAFA"))
+
+lunch_bi
+
+```
+
+This graphs shows the relationship between % free lunch program enrollment and % bilingual popualtion among CPS Networks (breakdown mostly by location). Blue lines indicate the fitted condition, and red dotted lines indicate the mean level for % bilingual popluation among different years, and green dotted lines indicate the mean levle for % reduced/free lunch population among different years. Here, we would like to use % reduced/free lunch as an indicator for low income students. Therefore, the grpahs presents that Networks with more bilingual population are also Networks with more economically disadvantaged population. Especially for Network 7 and Network 8, contains schools in Midway and Pilsen Litter Village. 
+
+***
+###SQRP Performance I
+
+```{r, tidy=TRUE, warning=FALSE, message=FALSE}
+# graph 4
+# read in files
+SQRP <- read_excel("data/accountability_SQRP/Accountability_SQRPratings_2018-2019_SchoolLevel.xls", sheet = "High Schools (grds 9-12 only)", 
+                   skip = 1)
+SQRP <- SQRP[ , which(names(SQRP) %in% c("School ID", "School Name", "SQRP Total Points Earned", 
+                                         "4-Year Cohort Graduation Rate",  "Average Daily Attendance Rate", "College Enrollment Rate"))]
+SQRP <- SQRP[complete.cases(SQRP), ]  
+names(SQRP) <- c("ID", "Name", "SQRP_Score", "Graduation", "College_enroll",  "Attendance")
+
+SQRP$Graduation <- as.numeric(as.character(SQRP$Graduation))
+SQRP$Attendance <- as.numeric(as.character(SQRP$Attendance)) 
+SQRP$College_enroll <- as.numeric(as.character(SQRP$College_enroll)) 
+
+SQRP <- SQRP[SQRP$Graduation!=0 & SQRP$Attendance!=0 & SQRP$College_enroll!=0, ]
+```
+
+```{r, fig.width=10,fig.height=8}
+# draw graph
+sqrp_grad_attend <- 
+  ggplot(SQRP, 
+         aes(x = Graduation, 
+             y = Attendance, 
+             size = College_enroll, 
+             fill = SQRP_Score)) +
+  
+  geom_point(shape = 21) + 
+  
+  xlab("% 4-Year Cohort Graduation Rate") + 
+  ylab("% Average Daily Attendance Rate") +
+  
+  labs(size = "% College Enrollment Rate", 
+       fill = "School Quality Rating") +
+  
+  scale_x_continuous(limits = c(20, 100), 
+                     breaks = c(20, 30, 40, 50, 60, 70, 80, 90, 100)) +
+  scale_y_continuous(limits = c(70, 100), 
+                     breaks = c(70, 75, 80, 85, 90, 95, 100)) +
+  scale_size(range = c(0,8),
+             breaks = c(30, 40, 50, 60, 70, 80, 90, 100),
+             labels = c(30, 40, 50, 60, 70, 80, 90, 100)) +
+  scale_fill_gradient2(low = "#F1EF6D", 
+                       mid = "#F4D177",
+                       high = "#E62024", 
+                       midpoint = 3) +
+  
+  labs(
+    title = "High School SQRP Ratings are Heavily Determined by \nGraduation, Attendance, and College Enrollment", 
+    subtitle = "CPS FY1819 High School SQRP Ratings vs. Graduation, Attendance, and College Enrollment\n",
+    caption = "CPS School Data Report \n*Outlier removed for High School with missing values and extreme values") +
+  
+  theme(
+    plot.title = element_text(size = 18, hjust = 0.5, face = "bold", family = "Concert One"),
+    plot.subtitle = element_text(size = 16, hjust = 0.5, family = "Crimson Text"),
+    plot.caption = element_text(size = 12, hjust = 1, family = "Lobster"), 
+    
+    axis.title.x = element_text(size=14, face="bold", family =  "Crimson Text" ), 
+    axis.title.y = element_text(size=14, face="bold", family =  "Crimson Text" ),
+    
+    panel.grid.major.y = element_line(size = 0.2, linetype = 'solid',
+                                    colour = "lightgray"), 
+    panel.grid.major.x = element_line(size = 0.2, linetype = 'solid',
+                                    colour = "lightgray"), 
+    
+    axis.ticks.x = element_blank(),
+    axis.ticks.y = element_blank(),
+    panel.background = element_blank(),
+    
+    legend.position = "bottom", 
+    legend.direction = "horizontal",
+    legend.spacing.x = unit(0.5, 'cm'),
+    legend.text = element_text(size=10, face="bold", family = "Crimson Text"),
+    
+    plot.background = element_rect(fill = "#FAFAFA"))
+    
+sqrp_grad_attend
+```
+
+This graphs shows how CPS high school quality rating policy results (SQRP) are distributed. For each school, SQRP score lies with in any number between 1 - 5. As indicates from the graph, the lighter the color of the bubble, the high the SQRP score a school earns. On the meantime, this graph also shows the performance metrics for each school, including their high school graduation rate (observe through the x-axis), daily attendance rate (observe through the y-sxis), and college enrollment rate (observe through the size of the bubble, the bigger the bubble, the higher the college enrollment rate). Therefore, this grpah concludes that high school SQRP ratings are heavily determined by graduation, attendance, and college enrollment.
+
+***
+###Math/Reading Attainment
+
+```{r, tidy=TRUE, warning=FALSE, message=FALSE}
+# read in file 
+progress_2019 <- read_csv("data/progress_report/Chicago_Public_Schools_-_School_Progress_Reports_SY1819.csv", col_names = TRUE)
+progress_2019 <- select(progress_2019, School_ID, Short_Name, starts_with('NWEA'))
+progress_2019 <- select(progress_2019, School_ID, Short_Name, ends_with('Pct'))
+progress_2019 <- select(progress_2019, School_ID, Short_Name, contains('Growth'))
+progress_2019 <- progress_2019[complete.cases(progress_2019), ]
+colnames(progress_2019) <- c("ID", "Name", "Reading_3", "Reading_4", "Reading_5", "Reading_6", "Reading_7", "Reading_8", 
+                             "Math_3", "Math_4", "Math_5", "Math_6", "Math_7", "Math_8")
+
+progress_2019 <- melt(progress_2019, id=c("ID","Name"))
+progress_2019$subject <- ifelse(grepl("Math", progress_2019$variable), "Math", "Reading")
+progress_2019$variable <- gsub('Math_3', '3', progress_2019$variable)
+progress_2019$variable <- gsub('Reading_3', '3', progress_2019$variable)
+progress_2019$variable <- gsub('Math_4', '4', progress_2019$variable)
+progress_2019$variable <- gsub('Reading_4', '4', progress_2019$variable)
+progress_2019$variable <- gsub('Math_5', '5', progress_2019$variable)
+progress_2019$variable <- gsub('Reading_5', '5', progress_2019$variable)
+progress_2019$variable <- gsub('Math_6', '6', progress_2019$variable)
+progress_2019$variable <- gsub('Reading_6', '6', progress_2019$variable)
+progress_2019$variable <- gsub('Math_7', '7', progress_2019$variable)
+progress_2019$variable <- gsub('Reading_7', '7', progress_2019$variable)
+progress_2019$variable <- gsub('Math_8', '8', progress_2019$variable)
+progress_2019$variable <- gsub('Reading_8', '8', progress_2019$variable)
+```
+
+```{r, fig.width=10,fig.height=8}
+# draw graph
+progress <- 
+  ggplot(progress_2019, 
+         aes(x= variable, 
+             y = value)) +
+  
+  geom_violin(trim = TRUE)+
+  
+  geom_jitter(position = position_jitter(0.1),  
+              alpha = 0.5, 
+              aes(color = subject == "Reading")) +
+  
+  geom_hline(yintercept = 50,  
+             linetype="dashed", 
+             color = "red") +
+  
+  facet_wrap( ~ subject,
+              nrow = 1,
+              labeller = as_labeller(c("Math" = "NEWA Math Attainment", 
+                                       "Reading" = "NEWA Reading Attainment"))) +
+  
+  stat_summary(fun.y = median, geom = "line", 
+               aes(group = 1))  + 
+  stat_summary(fun.y = median, geom = "point") +
+  
+  scale_color_manual(labels = c("Math", "Reading"), 
+                     values = c("TRUE" = "#FBF4B1", 
+                                "FALSE" = "#FFCBCB")) +
+  scale_y_continuous(expand = c(0, 0)) +
+  
+  xlab("Student Grades") + 
+  ylab("NWEA Growth (50 Stays Same)") + 
+  
+  annotate("label",  
+           x = 6,  
+           y = 70,  
+           label = "Median") +
+  annotate("text",  
+           x = 5.5, 
+           y = 50,  
+           label = "National Average") +
+  
+  labs(
+    title = "CPS Students are Making Progress in both Math and Reading \nespecially for Grade 7 and 8", 
+    subtitle = "SY1819, NWEA Growth for Math and Reading for Students in Grade 3 - 8\n", 
+    caption = "City of Chicago Data Portal",
+    color = "Subject") +
+  
+  theme(
+    plot.title = element_text(size = 18, hjust = 0.5, face = "bold", family = "Concert One"),
+    plot.subtitle = element_text(size = 16, hjust = 0.5, family = "Crimson Text"),
+    plot.caption = element_text(size = 12, hjust = 1, family = "Lobster"), 
+    
+    axis.title.x = element_text(size=14, face="bold", family =  "Crimson Text" ), 
+    axis.title.y = element_text(size=14, face="bold", family =  "Crimson Text" ),
+    
+    panel.background = element_blank(),
+    panel.grid.major.y = element_line(size = 0.2, linetype = 'solid',
+                                    colour = "lightgray"), 
+    
+    axis.ticks.y = element_blank(),
+
+    legend.position = "bottom",
+    legend.spacing.x = unit(0.5, 'cm'),
+    legend.text = element_text(size=10, face="bold",family =  "Crimson Text"),
+    legend.title = element_text(size=10, face="bold",family =  "Crimson Text"), 
+    
+    strip.background = element_blank(), 
+    strip.text.x = element_text(size = 15, face="bold", color = "#3c4f65", family =  "Crimson Text"),
+    
+    plot.background = element_rect(fill = "#FAFAFA"))
+
+progress
+```
+
+This graphs shows how 402 CPS elementary school students are making progress in both of their NEWA math and reading attainment exams. Growth measures the change in between two points in time. This growth is compared to the average national growth for schools that started in the same place. A 50th percentile score means the school grew at the same rate as the national average. The black lines show the median of Growth among CPS students of different grades. We can observe that, median level of 7th grade and 8th grade in both math and reading are exceeding the national average. Despite the fact that Growth for different elementary schools varied a lot, and there are schools with very low Growth performance.
+
+***
+###Survey Questions
+
+```{r, tidy=TRUE, warning=FALSE, message=FALSE}
+
+# Graph 6
+
+# prepare data
+filter_column <- function(df){
+  df <- select(df, 
+               contains('School_Survey'), 
+               -ends_with('Pct'),
+               -ends_with('Description'))
+  return(df)
+}
+
+generate_count <- function(df, year){
+  
+  Involved_Families <- count(df, "School_Survey_Involved_Families")
+  Involved_Families$type <- 'Involved Families'
+  colnames(Involved_Families) <- c("degree", "count", "type")
+  
+  Supportive_Environment <- count(df, "School_Survey_Supportive_Environment")
+  Supportive_Environment$type <- 'Supportive Environment'
+  colnames(Supportive_Environment) <- c("degree", "count", "type")
+  
+  Ambitious_Instruction <- count(df, "School_Survey_Ambitious_Instruction")
+  Ambitious_Instruction$type <- 'Ambitious Instruction'
+  colnames(Ambitious_Instruction) <- c("degree", "count", "type")
+  
+  Effective_Leaders <- count(df, "School_Survey_Effective_Leaders")
+  Effective_Leaders$type <- 'Effective Leaders'
+  colnames(Effective_Leaders) <- c("degree", "count", "type")
+  
+  Collaborative_Teachers <- count(df, "School_Survey_Collaborative_Teachers")
+  Collaborative_Teachers$type <- 'Collaborative Teachers'
+  colnames(Collaborative_Teachers) <- c("degree", "count", "type")
+  
+  Safety <- count(df, "School_Survey_Safety")
+  Safety$type <- 'Safety'
+  colnames(Safety) <- c("degree", "count", "type")
+  
+  School_Community <- count(df, "School_Survey_School_Community")
+  School_Community$type <- 'School Community'
+  colnames(School_Community) <- c("degree", "count", "type")
+  
+  Parent_Teacher_Partnership <- count(df,"School_Survey_Parent_Teacher_Partnership")
+  Parent_Teacher_Partnership$type <- 'Parent Teacher Partnership'
+  colnames(Parent_Teacher_Partnership) <- c("degree", "count", "type")
+  
+  Quality_Of_Facilities <- count(df, "School_Survey_Quality_Of_Facilities")
+  Quality_Of_Facilities$type <- 'Quality Of Facilities'
+  colnames(Quality_Of_Facilities) <- c("degree", "count", "type")
+  
+  survey_one_year <- bind_rows(Involved_Families, Supportive_Environment, Ambitious_Instruction, Effective_Leaders, 
+                              Collaborative_Teachers, Safety, School_Community, Parent_Teacher_Partnership, Quality_Of_Facilities)
+  
+  survey_one_year$year <- year
+  
+  return(survey_one_year)
+}
+
+progress_2019 <- read_csv("data/progress_report/Chicago_Public_Schools_-_School_Progress_Reports_SY1819.csv", col_names = TRUE)
+progress_2019 <- filter_column(progress_2019)
+progress_2019 <- generate_count(progress_2019, 2019)
+
+progress_2018 <- read_csv("data/progress_report/Chicago_Public_Schools_-_School_Progress_Reports_SY1718.csv", col_names = TRUE)
+progress_2018 <- filter_column(progress_2018)
+progress_2018 <- generate_count(progress_2018, 2018)
+
+progress_2017 <- read_csv("data/progress_report/Chicago_Public_Schools_-_School_Progress_Reports_SY1617.csv", col_names = TRUE)
+progress_2017 <- filter_column(progress_2017)
+progress_2017 <- generate_count(progress_2017, 2017)
+
+progress_2016 <- read_csv("data/progress_report/Chicago_Public_Schools_-_School_Progress_Reports_SY1516.csv", col_names = TRUE)
+progress_2016 <- filter_column(progress_2016)
+progress_2016 <- generate_count(progress_2016, 2016)
+
+survey <- bind_rows(progress_2019, progress_2018, progress_2017, progress_2016)
+survey <- survey[c("type", "year", "degree", "count")]
+colnames(survey) <- c("group", "year", "degree", "value")
+survey <- survey[complete.cases(survey), ]
+
+survey$value <- as.numeric(survey$value)
+
+survey$degree <- revalue(survey$degree, c("Neutral"="NEUTRAL"))
+survey$degree <- revalue(survey$degree, c("Strong"="STRONG"))
+survey$degree <- revalue(survey$degree, c("Very strong"="VERY STRONG"))
+survey$degree <- revalue(survey$degree, c("Very weak"="VERY WEAK"))
+survey$degree <- revalue(survey$degree, c("Weak"="WEAK"))
+survey$degree <- as.factor(survey$degree)
+
+survey$group <- revalue(survey$group, c("Involved Families"="A"))
+survey$group <- revalue(survey$group, c("Supportive Environment"="B"))
+survey$group <- revalue(survey$group, c("Ambitious Instruction"="C"))
+survey$group <- revalue(survey$group, c("Effective Leaders"="D"))
+survey$group <- revalue(survey$group, c("Collaborative Teachers"="E"))
+survey$group <- revalue(survey$group, c("Safety"="F"))
+survey$group <- revalue(survey$group, c("School Community"="G"))
+survey$group <- revalue(survey$group, c("Parent Teacher Partnership"="H"))
+survey$group <- revalue(survey$group, c("Quality Of Facilities"="I"))
+survey$group <- as.factor(survey$group)
+
+survey_2019 <- survey[(survey$year == '2019'),]
+survey_2019$id <- seq.int(nrow(survey_2019))
+```
+
+```{r, fig.width=10,fig.height=8, message = FALSE, warning =FALSE}
+
+# draw graph 
+# Set a number of 'empty bar' to add at the end of each group
+empty_bar=2
+to_add = data.frame(matrix(NA, empty_bar*nlevels(survey_2019$group), ncol(survey_2019)) )
+colnames(to_add) = colnames(survey_2019)
+to_add$group=rep(levels(survey_2019$group), each=empty_bar)
+survey_2019=rbind(survey_2019, to_add)
+survey_2019=survey_2019 %>% arrange(group)
+survey_2019$id=seq(1, nrow(survey_2019))
+
+# Get the name and the y position of each label
+label_data=survey_2019
+number_of_bar=nrow(label_data)
+angle= 90 - 360 * (label_data$id-0.5) /number_of_bar    
+label_data$hjust<-ifelse( angle < -90, 1, 0)
+label_data$angle<-ifelse(angle < -90, angle+180, angle)
+
+# prepare a data frame for base lines
+base_data=survey_2019 %>% 
+  group_by(group) %>% 
+  summarize(start=min(id), end=max(id) - empty_bar) %>% 
+  rowwise() %>% 
+  mutate(title=mean(c(start, end)))
+
+# prepare a data frame for grid (scales)
+grid_data = base_data
+grid_data$end = grid_data$end[ c( nrow(grid_data), 1:nrow(grid_data)-1)] + 1
+grid_data$start = grid_data$start - 1
+
+# Make the plot
+survey_plot <- 
+  ggplot(survey_2019, 
+         aes(x = as.factor(id), 
+             y = value)) +     
+  
+  geom_bar(aes(x = as.factor(id), 
+               y = value, 
+               fill = degree), 
+           stat = "identity", 
+           alpha = 0.8, 
+           width = 1) +
+  
+  geom_segment(data = grid_data, 
+               aes(x = end, 
+                   y = 100, 
+                   xend = start, 
+                   yend = 100), 
+               colour = "#C8D9EB", 
+               alpha = 0.8, 
+               size = 0.3, 
+               inherit.aes = FALSE ) +
+  
+  geom_segment(data = grid_data, 
+               aes(x = end, 
+                   y = 200, 
+                   xend = start, 
+                   yend = 200), 
+               colour = "#C8D9EB", 
+               alpha = 0.8, 
+               size = 0.3 , 
+               inherit.aes = FALSE ) +
+  
+  geom_segment(data = grid_data, 
+               aes(x = end, 
+                   y = 300, 
+                   xend = start, 
+                   yend = 300), 
+               colour = "#C8D9EB", 
+               alpha = 0.8, 
+               size = 0.3 , 
+               inherit.aes = FALSE ) +
+  
+  annotate("text", 
+           x = rep(max(survey_2019$id), 4), 
+           y = c(100, 200, 300, 400), 
+           label = c("100", "200", "300", "400"), 
+           color = "grey",
+           size = 3,
+           angle = 0,
+           fontface = "bold", 
+           hjust = 1) +
+  
+  scale_fill_manual(values = c("#D3BDA2","#615B59","#DB9A96","#DBB2AF","#E5CAC5","#E7DFE0")) +
+  
+  ylim(-200,350) +
+  
+  coord_polar() + 
+  
+  labs(
+    title = "Schools are not Promoting Safety and School Community", 
+    subtitle = "Schools have Effective Leaders, Collaborative Teachers and Ambitious Instruction", 
+    caption = "City of Chicago Data Portal") +
+   
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 18, hjust = 0.5, face = "bold", family = "Concert One"),
+    plot.subtitle = element_text(size = 14, hjust = 0.5, family = "Bitter"),
+    plot.caption = element_text(size = 12, hjust = 1, family = "Lobster"), 
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank(),
+    legend.position = "bottom") +
+  geom_text(data=label_data, aes(x=id, y=value+10, label=value, hjust=hjust), 
+            color="black", fontface="bold",alpha=0.6, size=2.5, angle= label_data$angle, inherit.aes = FALSE ) +
+  geom_segment(data=base_data, aes(x = start, y = -5, xend = end, yend = -5), 
+               colour = "black", alpha=0.8, size=0.6 , inherit.aes = FALSE ) +
+  geom_text(data=base_data, aes(x = title, y = -200, label= "Survey Questions"),
+            colour = "black", alpha=0.8, size=4, fontface="bold", inherit.aes = FALSE)
+ 
+survey_plot
+
+
+```
+
+This graphs shows the result of the CPS survey "My School, My Voice" for FY1819. Each bar represent a certain answer to a single questions. Questions are answered in the scale from Not enough data, Very Weak, to Very Strong. Questions are related to school leadership, teachering, parents engagements, and safety, etc.. From the survery, we find schools are not promoting safety or school community, but are doing well in terms of leadership and teaching. 
+
+***
+###Correlation Matrix
+
+```{r, tidy=TRUE, warning=FALSE, message=FALSE}
+
+# grpah 7: performance matrix
+
+# prepare data 
+progress_2019 <- 
+  read_csv("data/progress_report/Chicago_Public_Schools_-_School_Progress_Reports_SY1819.csv", 
+           col_names = TRUE) %>%
+  mutate(`School_ID` = as.character(`School_ID`))
+
+SQRP_2019 <- read_excel("data/accountability_SQRP/Accountability_SQRPratings_2018-2019_SchoolLevel.xls", sheet = "Elem Schools (grds PreK-8 only)", 
+                   skip = 1)%>%
+  mutate(`School ID` = as.character(`School ID`))
+
+demo_2019 <- 
+  read_excel("data/demo_special/Demographics_LEPSPED_2019.xls", 
+             sheet = "Schools",
+             skip = 1) %>%
+  mutate(`School ID` = as.character(`School ID`))
+
+all_2019 <-
+  progress_2019 %>%
+    inner_join(demo_2019, by = c("School_ID" = "School ID")) %>%
+    inner_join(SQRP_2019, by = c("School_ID" = "School ID")) %>%
+    filter((Primary_Category == "ES")) %>%
+    select("Zip",  "SQRP Total Points Earned",
+           starts_with("Attainment"),
+           -starts_with("Attainment_All_Grades"),
+           -ends_with('Lbl_ES'),
+           -ends_with('School_Lbl'),
+           -contains('SAT'),
+           starts_with("School_Survey_Student"),
+           starts_with("School_Survey_Teacher"),
+           starts_with("Student_Attendance"),
+           starts_with("Teacher_Attendance"),
+           -ends_with('2_Pct'),
+           -contains('Avg'),
+           "%..6", "%..8", "%..10") 
+
+all_2019 <- 
+  all_2019[complete.cases(all_2019), ] 
+all_2019 <- 
+  mutate_all(all_2019, function(x) as.numeric(as.character(x)))
+
+names(all_2019) <- 
+  c("Zip", "SQRP", "Reading", "Math", "Student Response", "Teacher Responce", 
+    "Student Attendance", "Teacher Attendance", "Bilingual", "Special Ed", "Free Lunch")
+
+correlation <- 
+  round(cor(all_2019),2)
+
+get_lower_tri<-function(correlation){
+  correlation[upper.tri(correlation)] <- NA
+  return(correlation)
+}
+
+get_upper_tri <- function(correlation){
+  correlation[lower.tri(correlation)]<- NA
+  return(correlation)
+}
+
+lower_tri <- get_lower_tri(correlation)
+half_correlation <- melt(lower_tri, na.rm = TRUE)
+
+higher_tri <- get_upper_tri(correlation)
+other_half_correlation <- melt(higher_tri, na.rm = TRUE)
+```
+
+```{r, fig.width=10,fig.height=8, message = FALSE, warning =FALSE}
+
+# draw graph 
+correlation_map <- 
+  ggplot(data = half_correlation, 
+         aes(x = Var1, 
+             y = Var2, 
+             fill = value)) + 
+  
+  geom_tile(color = "white", 
+            alpha = 0.9) +
+  
+  geom_text(data = other_half_correlation,
+            aes(Var2, Var1, label = value), 
+            color = "white", 
+            size = 3) +
+  
+  geom_text(data = subset(half_correlation, 
+                          value == 1), 
+            aes(label = Var1),  
+            vjust= -3.7, 
+            hjust= 0.7, 
+            size = 3) +
+  
+  scale_fill_gradient2(low = "#FFF0BC", 
+                       high = "#35234B", 
+                       mid = "#D84C73", 
+                       midpoint = 0, 
+                       limit = c(-1,1), 
+                       space = "Lab", 
+                       name="Correlation Matrix") +
+  
+  coord_cartesian(clip = 'off') +
+  
+  labs(
+    title = "Strong Positive Association: SQRP with Math & Reading Attainment",
+    subtitle = "Correlation Heatmap, Also Significant Negetive Association: % Free Lunch & Math & Reading Attainment\n", 
+    caption = "CPS School Data Report & City of Chicago Data Portal") +
+  guides(fill = guide_colorbar(barwidth = 10, barheight = 1.5,
+                               title.position = "top", title.hjust = 0.5)) + 
+  theme(
+    plot.title = element_text(size = 18, hjust = 0.5, face = "bold", family = "Concert One"),
+    plot.subtitle = element_text(size = 14, hjust = 0.5, family = "Bitter"),
+    plot.caption = element_text(size = 12, hjust = 1, family = "Lobster"), 
+    
+    axis.text.x = element_text(angle = 25, vjust = 1.2, size = 8, hjust = 1),
+    axis.text.y = element_blank(),
+    
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    
+    axis.ticks = element_blank(),
+    
+    strip.text.x = element_text(size = 10, face="bold"),
+    
+    panel.grid.major = element_blank(),
+    panel.border = element_blank(),
+    panel.background = element_blank(),
+    
+    legend.justification = c(1, 0),
+    legend.position = c(0.3, 0.7),
+    legend.direction = "horizontal",
+
+    plot.background = element_rect(fill = "#FAFAFA"))
+    
+correlation_map
+```
+
+This graphs shows the result of the Correlation matrix for performance matrix, such as grade, shcool rating, attendance, survey participation, and socio ecnomic status. Each box represents the correlation, range from -1 to 1. We found out a Strong Positive Association, SQRP with Math & Reading Attainment; and also a Strong Negetive Association: % Free Lunch & Math & Reading Attainment.
+
+***
+###SQRP Performance II
+
+```{r, tidy=TRUE, warning=FALSE, message=FALSE, comment = FALSE, error = FALSE}
+# grpah 8: SQRP with map 
+
+# prepare data 
+progress_2019 <- 
+  read_csv("data/progress_report/Chicago_Public_Schools_-_School_Progress_Reports_SY1819.csv", 
+           col_names = TRUE) %>%
+  mutate(`School_ID` = as.character(`School_ID`))
+
+
+
+SQRP_2019_elem <- read_excel("data/accountability_SQRP/Accountability_SQRPratings_2018-2019_SchoolLevel.xls", 
+                        sheet = "Elem Schools (grds PreK-8 only)", 
+                        skip = 1) %>%
+  mutate(`School ID` = as.character(`School ID`))
+
+SQRP_2019_high <- read_excel("data/accountability_SQRP/Accountability_SQRPratings_2018-2019_SchoolLevel.xls", 
+                        sheet = "High Schools (grds 9-12 only)", 
+                        skip = 1) %>%
+  mutate(`School ID` = as.character(`School ID`))
+
+
+map_1_2019 <-
+  progress_2019 %>%
+  inner_join(SQRP_2019_elem, 
+             by = c("School_ID" = "School ID")) %>%
+  select(c("School_Latitude", "School_Longitude",  "SQRP Total Points Earned")) %>%
+  na.omit() %>%
+  rename(SQRP_points = "SQRP Total Points Earned") %>%
+  mutate (SQRP_ratings = case_when((1 <= SQRP_points) & (SQRP_points < 1.5) ~ "1 - 1.5",
+                                   (1.5 <= SQRP_points) & (SQRP_points < 2) ~ "1.5 - 2",
+                                   (2 <= SQRP_points) & (SQRP_points < 2.5) ~ "2 - 2.5",
+                                   (2.5 <= SQRP_points) & (SQRP_points < 3) ~ "2.5 - 3",
+                                   (3 <= SQRP_points) & (SQRP_points < 3.5) ~ "3 - 3.5",
+                                   (3.5 <= SQRP_points) & (SQRP_points < 4) ~ "3.5 - 4",
+                                   (4 <= SQRP_points) & (SQRP_points < 4.5) ~ "4 - 4.5",
+                                   (4.5 <= SQRP_points) & (SQRP_points < 5) ~ "4.5 - 5"))
+
+map_2_2019 <-
+  progress_2019 %>%
+  inner_join(SQRP_2019_high, 
+             by = c("School_ID" = "School ID")) %>%
+  select(c("School_Latitude", "School_Longitude",  "SQRP Total Points Earned")) %>%
+  na.omit() %>%
+  rename(SQRP_points = "SQRP Total Points Earned") %>%
+  mutate (SQRP_ratings = case_when((1 <= SQRP_points) & (SQRP_points < 1.5) ~ "1 - 1.5",
+                                   (1.5 <= SQRP_points) & (SQRP_points < 2) ~ "1.5 - 2",
+                                   (2 <= SQRP_points) & (SQRP_points < 2.5) ~ "2 - 2.5",
+                                   (2.5 <= SQRP_points) & (SQRP_points < 3) ~ "2.5 - 3",
+                                   (3 <= SQRP_points) & (SQRP_points < 3.5) ~ "3 - 3.5",
+                                   (3.5 <= SQRP_points) & (SQRP_points < 4) ~ "3.5 - 4",
+                                   (4 <= SQRP_points) & (SQRP_points < 4.5) ~ "4 - 4.5",
+                                   (4.5 <= SQRP_points) & (SQRP_points < 5) ~ "4.5 - 5"))
+
+map_network_shp <- 
+  st_read("data/geographic_networks/geo_export_5a99bf43-f60d-42d1-87dd-780bd91774e1.shp") 
+
+```
+
+```{r, fig.width=10, fig.height=8, message = FALSE, warning = FALSE}
+
+map_network_shp$centroid <- 
+  st_centroid(map_network_shp$geometry)
+
+network_map_elem <- 
+  ggplot() + 
+  
+  geom_sf(data = map_network_shp,
+          color = "black",
+          fill = "#E9F5EA") +
+  
+  geom_point(data = map_1_2019, 
+             aes(x = School_Longitude, 
+                 y = School_Latitude, 
+                 color = SQRP_ratings),
+             size = 2) +
+  
+  geom_label(data = map_network_shp, 
+             aes(geometry = geometry, 
+                 label = planning_z), 
+             stat = "sf_coordinates",
+             size = 2.5) +
+  
+  scale_color_manual(values = c("1 - 1.5" = "#2166AC", 
+                                "1.5 - 2" = "#4393C3", 
+                                "2 - 2.5" =  "#92C5DE",
+                                "2.5 - 3" = "#D1E5F0",
+                                "3 - 3.5" = "#FDDBC7",
+                                "3.5 - 4" = "#F4A582",
+                                "4 - 4.5" = "#D6604D",
+                                "4.5 - 5" = "#B2182B")) +
+  
+  labs(
+    title = "North Outperform South and East",
+    subtitle = "Elementary School SQRP Ratings Distribution\n", 
+    caption = "CPS School Data Report & City of Chicago Data Portal") +
+  
+  theme(
+    plot.title = element_text(size = 18, hjust = 0.5, face = "bold", family = "Concert One"),
+    plot.subtitle = element_text(size = 14, hjust = 0.5, family = "Bitter"),
+    plot.caption = element_text(size = 12, hjust = 1, family = "Lobster"), 
+    
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    axis.ticks = element_blank(),
+    
+    strip.text.x = element_text(size = 10, face="bold"),
+    
+    panel.grid.major=element_line(colour="transparent"),
+    panel.border = element_blank(),
+    panel.background = element_blank(),
+    
+    
+    legend.position = "bottom",
+    legend.direction = "horizontal",
+    legend.spacing.x = unit(0.5, 'cm'),
+    legend.title = element_text(size=10, face="bold", family = "Crimson Text"),
+    legend.text = element_text(size=10, face="bold", family = "Crimson Text"))
+
+
+network_map_high <- 
+  ggplot() + 
+  
+  geom_sf(data = map_network_shp,
+          color = "black",
+          fill = "#E5D9E7") +
+  
+  geom_point(data = map_2_2019, 
+             aes(x = School_Longitude, 
+                 y = School_Latitude, 
+                 color = SQRP_ratings),
+             size = 3) +
+  
+  geom_label(data = map_network_shp, 
+             aes(geometry = geometry, 
+                 label = planning_z), 
+             stat = "sf_coordinates",
+             size = 2.5) +
+  
+  scale_color_manual(values = c("1 - 1.5" = "#2166AC", 
+                                "1.5 - 2" = "#4393C3", 
+                                "2 - 2.5" =  "#92C5DE",
+                                "2.5 - 3" = "#D1E5F0",
+                                "3 - 3.5" = "#FDDBC7",
+                                "3.5 - 4" = "#F4A582",
+                                "4 - 4.5" = "#D6604D",
+                                "4.5 - 5" = "#B2182B")) +
+  
+  labs(
+    title = "Advantages No Longer Obvious",
+    subtitle = "High School SQRP Ratings Distribution\n", 
+    caption = "CPS School Data Report & City of Chicago Data Portal") +
+  
+  theme(
+    plot.title = element_text(size = 18, hjust = 0.5, face = "bold", family = "Concert One"),
+    plot.subtitle = element_text(size = 14, hjust = 0.5, family = "Bitter"),
+    plot.caption = element_text(size = 12, hjust = 1, family = "Lobster"), 
+    
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    axis.ticks = element_blank(),
+    
+    strip.text.x = element_text(size = 10, face="bold"),
+    
+    panel.grid.major=element_line(colour="transparent"),
+    panel.border = element_blank(),
+    panel.background = element_blank(),
+    
+    
+    legend.position = "bottom",
+    legend.direction = "horizontal",
+    legend.spacing.x = unit(0.5, 'cm'),
+    legend.title = element_text(size=10, face="bold", family = "Crimson Text"),
+    legend.text = element_text(size=10, face="bold", family = "Crimson Text"))
+ 
+
+network_map <- ggarrange(network_map_elem, network_map_high,
+                    ncol = 2, nrow = 1)
+
+network_map
+
+
+```
+
+This graphs shows the map of SQRP ratings for both elementary schools and high schools breaking down by networks for 2019. As SQRP rating ranges from 1-5, schools with higher score colors toward red, and schools with lower score colors towards blue. From the map, we obserse that, schools locate on the north are more clustered and have higher performance ratings, eapecisally for neighborhoods such as Lincoln Park, Logan Squre, and Ravenswood; schools loacte on the south are more scattered and have lower performance ratings, especially for neighborhoods on the far south side and far east side. In addition, this trend is more obvious for elementary schools than high schools. 
+
+***
+###Integrate Community Area
+
+```{r, tidy=TRUE, warning=FALSE, message=FALSE, comment = FALSE, error = FALSE}
+
+# grpah 9: Integrate with community area 
+
+# prepare data 
+progress_2019 <- 
+  read_csv("data/progress_report/Chicago_Public_Schools_-_School_Progress_Reports_SY1819.csv", 
+           col_names = TRUE) %>%
+  mutate(`School_ID` = as.character(`School_ID`))
+
+census_2019 <- 
+  read_csv("data/census/Census_Data_-_Selected_socioeconomic_indicators_in_Chicago__2008___2012.csv") %>%
+  rename(name = "COMMUNITY AREA NAME") %>%
+  rename(poverty_rate = "PERCENT HOUSEHOLDS BELOW POVERTY") %>%
+  rename(with_out_high_school_diploma ="PERCENT AGED 25+ WITHOUT HIGH SCHOOL DIPLOMA") %>%
+  rename(unemployment_rate ="PERCENT AGED 16+ UNEMPLOYED") %>%
+  rename(income = "PER CAPITA INCOME") %>%
+  mutate(name = tolower(name)) %>%
+  mutate(name = replace(name, name=="washington height", "washington heights"),
+         name = replace(name, name=="o'hare", "ohare"))
+
+map_community_shp <- 
+  st_read("data/community_area/geo_export_3a1570f2-ee32-4159-984e-2a871fd8f50d.shp") %>%
+  mutate(`area_num_1` = as.numeric(`area_num_1`)) %>%
+  mutate(community = tolower(community)) %>%
+  left_join(census_2019, 
+            by = c("community" = "name"))
+
+```
+
+```{r, fig.width=10, fig.height=8, message = FALSE, warning = FALSE}
+
+map_community_shp$centroid <- 
+  st_centroid(map_community_shp$geometry)
+
+poverty_map <- 
+  ggplot() + 
+  
+  geom_sf(data = map_community_shp, 
+          aes(fill = poverty_rate)) +
+  
+  geom_text(data = subset(map_community_shp, poverty_rate >= 42.2),
+             aes(geometry = geometry, 
+                 label = community), 
+             stat = "sf_coordinates",
+             size = 3,
+             fontface = "bold") +
+  
+  scale_fill_gradient2(low = "#F1EF6D", 
+                       mid = "#F4D177",
+                       high = "#E62024", 
+                       midpoint = 20,
+                       na.value = "white") +
+  
+   labs(fill =guide_legend(title = "Poverty Rate")) +
+ labs(
+    title = "Poverty Rate") +
+  
+  theme(
+    plot.title = element_text(size = 14, hjust = 0.5, family = "Bitter"),
+    
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    axis.ticks = element_blank(),
+    
+    strip.text.x = element_text(size = 10, face="bold"),
+    
+    panel.grid.major=element_line(colour="transparent"),
+    panel.border = element_blank(),
+    panel.background = element_blank(),
+    
+    plot.margin = unit(c(0,0,-4,0),"cm"),
+    
+    legend.position = "bottom",
+    legend.direction = "horizontal",
+    legend.spacing.x = unit(0.5, 'cm'),
+    legend.title = element_text(size=10, face="bold", family = "Crimson Text"),
+    legend.text = element_text(size=10, face="bold", family = "Crimson Text"))
+ 
+
+
+
+unemployment_map <- 
+  ggplot() + 
+  
+  geom_sf(data = map_community_shp, 
+          aes(fill = unemployment_rate)) +
+  
+  geom_text(data = subset(map_community_shp, unemployment_rate >= 28.5),
+             aes(geometry = geometry, 
+                 label = community), 
+             stat = "sf_coordinates",
+             size = 3,
+             fontface = "bold",
+             color = "red") +
+  
+  
+  scale_fill_gradient2(low = "#DBF3FA", 
+                       mid = "#1A9FB2",
+                       high = "#011E49", 
+                       midpoint = 20,
+                       na.value = "white") +
+  
+    
+  labs(fill =guide_legend(title = "Unemployment Rate")) +
+ labs(
+    title = "Unemployment Rate") +
+  theme(
+    plot.title = element_text(size = 14, hjust = 0.5, family = "Bitter"),
+    
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    axis.ticks = element_blank(),
+    
+    strip.text.x = element_text(size = 10, face="bold"),
+    
+    panel.grid.major=element_line(colour="transparent"),
+    panel.border = element_blank(),
+    panel.background = element_blank(),
+    
+    plot.margin = unit(c(0,0,-4,0),"cm"),
+    
+    legend.position = "bottom",
+    legend.direction = "horizontal",
+    legend.spacing.x = unit(0.5, 'cm'),
+    legend.title = element_text(size=10, face="bold", family = "Crimson Text"),
+    legend.text = element_text(size=10, face="bold", family = "Crimson Text"))
+ 
+
+
+with_out_high_school_diploma_map <- 
+  ggplot() + 
+  
+  geom_sf(data = map_community_shp, 
+          aes(fill = with_out_high_school_diploma)) +
+  
+  geom_text(data = subset(map_community_shp, with_out_high_school_diploma >= 41),
+             aes(geometry = geometry, 
+                 label = community), 
+             stat = "sf_coordinates",
+             size = 3,
+             fontface = "bold",
+             color = "yellow") +
+  
+  
+  scale_fill_gradient2(low = "#F8CEDA", 
+                       mid = "#6C7ADE",
+                       high = "#482D5A", 
+                       midpoint = 20,
+                       na.value = "white") +
+  labs(fill ="Without High School Diploma") +
+   labs(
+    title = "Without High School Diploma") +
+  
+
+  theme(
+    plot.title = element_text(size = 14, hjust = 0.5, family = "Bitter"),
+    
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    axis.ticks = element_blank(),
+    
+    strip.text.x = element_text(size = 10, face="bold"),
+    
+    panel.grid.major=element_line(colour="transparent"),
+    panel.border = element_blank(),
+    panel.background = element_blank(),
+    
+    plot.margin = unit(c(0,0,-4,0),"cm"),
+
+    legend.position = "bottom",
+    legend.direction = "horizontal",
+    legend.spacing.x = unit(0.5, 'cm'),
+    legend.title = element_text(size=10, face="bold", family = "Crimson Text"),
+    legend.text = element_text(size=10, face="bold", family = "Crimson Text"))
+ 
+
+
+community_map <- 
+  ggarrange(poverty_map, unemployment_map, with_out_high_school_diploma_map,
+                    ncol = 3, nrow = 1)  
+
+
+annotate_figure(community_map,
+                top = text_grob("What Each Community Looks Like",size = 18, hjust = 0.5, vjust = 10, face = "bold", family = "Concert One"),
+                bottom = text_grob("CPS School Data Report & City of Chicago Data Portal", 
+                                  size = 12, hjust = 1, family = "Lobster", x = 1))
+
+```
+
+This graphs shows the map of 70 Chicgao Community Areas break down by poverty rate, unemployment rate, and percentage without a high school diploma from the 2008-2012 community survey result. Each graph labels out the top 5 community with the most servere poverty, unemployment, and low education attaninment. We observed, these community clustered in the south part, the lower middle, and thw middle part of the city, Some of these communities are fuller park, englewood, washington park, riverdale, brighton park, and gage park, etc. All these indicators can be a reference when students choose schools and family choose houses. 
+
